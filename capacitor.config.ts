@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.quanlychitieu.app',
+  appId: 'work.hippi.hippimo',
   appName: 'Hippimo',
   webDir: 'dist'
 };

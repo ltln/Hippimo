@@ -128,7 +128,6 @@ function DetailCard({
   return (
     <View style={[styles.detailCard, isTransfer ? styles.detailCardDark : styles.detailCardLight]}>
       <View style={styles.detailActions}>
-        
         <Pressable
           hitSlop={8}
           onPress={() => router.push({ pathname: '/edit-transaction', params: { id: item.id } })}
@@ -171,20 +170,17 @@ function DetailCard({
         </View>
       )}
 
-     {/* HIỂN THỊ THÔNG TIN GIAO DỊCH */}
+      {/* HIỂN THỊ THÔNG TIN GIAO DỊCH */}
       <View style={styles.detailInfo}>
         <DetailLine icon='calendar-outline' text={item.detail.date} />
-        
+
         {/* Nếu là Chi tiêu -> Hiển thị thêm Tên ví trước */}
         {!isTransfer && item.detail.tags[0] && (
           <DetailLine icon='wallet-outline' text={item.detail.tags[0]} />
         )}
 
         {/* Ghi chú luôn xuất hiện chung 1 format cho CẢ 2 loại giao dịch */}
-        <DetailLine 
-          icon='chatbox-ellipses-outline' 
-          text={item.detail.note || 'Không có ghi chú'} 
-        />
+        <DetailLine icon='chatbox-ellipses-outline' text={item.detail.note || 'Không có ghi chú'} />
       </View>
 
       {/* HIỂN THỊ GỢI Ý AI */}

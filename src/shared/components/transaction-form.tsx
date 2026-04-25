@@ -243,15 +243,15 @@ export function TransactionForm({
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>GHI CHÚ</Text>
           <TextInput
-            defaultValue={initialValues.note} 
+            defaultValue={initialValues.note}
             onChangeText={(text) => {
-              noteRef.current = text 
+              noteRef.current = text
             }}
             placeholder='Nhập ghi chú cho giao dịch'
             placeholderTextColor='#B8CEC3'
             style={styles.noteInput}
-            multiline={true} 
-            submitBehavior="blurAndSubmit"
+            multiline={true}
+            submitBehavior='blurAndSubmit'
             autoCorrect={false}
             spellCheck={false}
           />
