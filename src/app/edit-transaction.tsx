@@ -3,11 +3,13 @@ import { Alert, Text, View } from 'react-native'
 
 import { TransactionForm } from '@/shared/components/transaction-form'
 import { useTransactions } from '@/shared/contexts/transaction-context'
+import { useWallets } from '@/shared/contexts/wallet-context'
 import { getTransactionFormValues } from '@/shared/utils/transaction-form'
 
 export default function EditTransactionScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>()
   const { transactions, updateTransaction } = useTransactions()
+  const { wallets } = useWallets()
   const transaction = transactions.find((item) => item.id === id)
 
   if (!transaction || !id) {
@@ -32,7 +34,7 @@ export default function EditTransactionScreen() {
     <TransactionForm
       title='CHỈNH SỬA GIAO DỊCH'
       submitLabel='CẬP NHẬT GIAO DỊCH'
-      initialValues={getTransactionFormValues(transaction)}
+      initialValues={getTransactionFormValues(transaction, wallets)}
       transactionId={transaction.id}
       onSubmit={(updatedTransaction) => {
         updateTransaction(updatedTransaction)
