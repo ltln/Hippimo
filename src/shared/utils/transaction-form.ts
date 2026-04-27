@@ -1,4 +1,5 @@
 import type { TransactionItem, TransactionType } from '@/shared/contexts/transaction-context'
+import type { WalletItem } from '@/shared/contexts/wallet-context'
 
 export type CreateMode = TransactionType
 
@@ -13,18 +14,16 @@ export type TransactionFormValues = {
   transactionDate: string
 }
 
-export const wallets = ['Tiền mặt', 'MoMo', 'Ngân hàng', 'Ví ăn uống']
-export const categories = ['Ăn uống', 'Di chuyển', 'Nhà cửa', 'Giải trí']
-export const receiveWallets = ['MoMo', 'Ngân hàng', 'Ví dự phòng', 'Tiền mặt']
+export const categories = ['TIỀN MẶT', 'NGÂN HÀNG', 'TIẾT KIỆM', 'VÍ ĐIỆN TỬ']
 
 export const defaultTransactionFormValues: TransactionFormValues = {
   mode: 'expense',
   amount: '400000',
   note: '',
-  expenseWallet: 'Tiền mặt',
-  expenseCategory: 'Ăn uống',
-  transferFromWallet: 'Tiền mặt',
-  transferToWallet: 'MoMo',
+  expenseWallet: 'cash-main',
+  expenseCategory: 'TIỀN MẶT',
+  transferFromWallet: 'cash-main',
+  transferToWallet: 'momo-main',
   transactionDate: '29/04/2026',
 }
 
@@ -58,6 +57,7 @@ export function buildTransaction({
   expenseCategory,
   transferFromWallet,
   transferToWallet,
+  wallets,
 }: {
   id?: string
   amountValue: number
@@ -68,15 +68,22 @@ export function buildTransaction({
   expenseCategory: string
   transferFromWallet: string
   transferToWallet: string
+  wallets: WalletItem[]
 }): TransactionItem {
   const rawId = id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const normalizedNote = note.trim() || 'Giao dịch mới vừa được thêm từ màn hình nhập tay.'
   const formattedAmount = `${new Intl.NumberFormat('vi-VN').format(amountValue)} VND`
+  const expenseWalletItem = findWallet(wallets, expenseWallet)
+  const fromWalletItem = findWallet(wallets, transferFromWallet)
+  const toWalletItem = findWallet(wallets, transferToWallet)
+  const expenseWalletName = expenseWalletItem?.name ?? expenseWallet
+  const fromWalletName = fromWalletItem?.name ?? transferFromWallet
+  const toWalletName = toWalletItem?.name ?? transferToWallet
 
   if (mode === 'transfer') {
     return {
       id: rawId,
-      title: `Chuyển từ ${transferFromWallet}`,
+      title: `Chuyển từ ${fromWalletName}`,
       amount: formattedAmount,
       amountValue,
       dateLabel: date.display,
@@ -84,16 +91,18 @@ export function buildTransaction({
       icon: 'wallet-outline',
       iconBackground: '#8A7DFF',
       type: 'transfer',
+      transferFromWalletId: fromWalletItem?.id,
+      transferToWalletId: toWalletItem?.id,
       detail: {
         amountDisplay: formattedAmount,
         amountColor: '#79F4A6',
         date: date.display,
-        tags: [`${transferFromWallet} -> ${transferToWallet}`],
-        note: normalizedNote, // <-- Đây là Ghi chú người dùng
-        aiSuggestion: 'Giao dịch chuyển tiền nội bộ', // <-- Thêm trường riêng cho AI
-        footer: transferFromWallet.toUpperCase(),
+        tags: [`${fromWalletName} -> ${toWalletName}`],
+        note: normalizedNote,
+        aiSuggestion: 'Giao dịch chuyển tiền nội bộ',
+        footer: fromWalletName.toUpperCase(),
         rightContent: 'bank-transfer',
-      } as any, // Dùng as any để bypass lỗi interface nếu chưa update kiểu dữ liệu
+      } as any,
     }
   }
 
@@ -107,20 +116,24 @@ export function buildTransaction({
     icon: mapCategoryIcon(expenseCategory),
     iconBackground: mapCategoryColor(expenseCategory),
     type: 'expense',
+    walletId: expenseWalletItem?.id,
     detail: {
       amountDisplay: `-${formattedAmount}`,
       amountColor: '#FFDFD7',
       date: date.display,
-      tags: [expenseWallet], // <-- Đã xóa note khỏi tags để không bị lặp
-      note: normalizedNote, // <-- Ghi chú người dùng chuẩn xác
-      aiSuggestion: `Có vẻ bạn đang chi cho ${expenseCategory.toLowerCase()}?`, // <-- Trường riêng cho AI
+      tags: [expenseWalletName],
+      note: normalizedNote,
+      aiSuggestion: `Có vẻ bạn đang chi cho ${expenseCategory.toLowerCase()}?`,
       footer: expenseCategory,
       rightContent: 'icon',
     } as any,
   }
 }
 
-export function getTransactionFormValues(transaction: TransactionItem): TransactionFormValues {
+export function getTransactionFormValues(
+  transaction: TransactionItem,
+  wallets: WalletItem[] = [],
+): TransactionFormValues {
   const amount = String(Math.abs(transaction.amountValue))
   const transactionDate = transaction.detail.date.replaceAll('-', '/')
 
@@ -131,11 +144,13 @@ export function getTransactionFormValues(transaction: TransactionItem): Transact
     return {
       mode: 'transfer',
       amount,
-      note: transaction.detail.note, // Đảm bảo lấy đúng note gốc
+      note: transaction.detail.note,
       expenseWallet: defaultTransactionFormValues.expenseWallet,
       expenseCategory: defaultTransactionFormValues.expenseCategory,
-      transferFromWallet: matchKnownOption(fromWalletRaw || transaction.detail.footer, wallets),
-      transferToWallet: matchKnownOption(toWalletRaw, receiveWallets),
+      transferFromWallet:
+        transaction.transferFromWalletId ??
+        matchKnownWalletId(fromWalletRaw || transaction.detail.footer, wallets),
+      transferToWallet: transaction.transferToWalletId ?? matchKnownWalletId(toWalletRaw, wallets),
       transactionDate,
     }
   }
@@ -143,13 +158,35 @@ export function getTransactionFormValues(transaction: TransactionItem): Transact
   return {
     mode: 'expense',
     amount,
-    note: transaction.detail.note, // Đảm bảo lấy đúng note gốc
-    expenseWallet: matchKnownOption(transaction.detail.tags[0], wallets),
+    note: transaction.detail.note,
+    expenseWallet: transaction.walletId ?? matchKnownWalletId(transaction.detail.tags[0], wallets),
     expenseCategory: matchKnownOption(transaction.detail.footer || transaction.title, categories),
     transferFromWallet: defaultTransactionFormValues.transferFromWallet,
     transferToWallet: defaultTransactionFormValues.transferToWallet,
     transactionDate,
   }
+}
+
+function findWallet(wallets: WalletItem[], value: string) {
+  return (
+    wallets.find((wallet) => wallet.id === value) ??
+    wallets.find(
+      (wallet) =>
+        wallet.name.trim().toLocaleLowerCase('vi-VN') === value.trim().toLocaleLowerCase('vi-VN'),
+    )
+  )
+}
+
+function matchKnownWalletId(value: string | undefined, wallets: WalletItem[]) {
+  if (wallets.length === 0) {
+    return value ?? defaultTransactionFormValues.expenseWallet
+  }
+
+  if (!value) {
+    return wallets[0].id
+  }
+
+  return findWallet(wallets, value)?.id ?? wallets[0].id
 }
 
 function matchKnownOption(value: string | undefined, options: string[]) {
@@ -162,10 +199,14 @@ function matchKnownOption(value: string | undefined, options: string[]) {
     (option) => option.trim().toLocaleLowerCase('vi-VN') === normalizedValue,
   )
 
-  return matchedOption ?? value
+  return matchedOption ?? options[0]
 }
 
 function mapCategoryIcon(category: string): TransactionItem['icon'] {
+  if (category === 'TIỀN MẶT') return 'cash'
+  if (category === 'NGÂN HÀNG') return 'bank'
+  if (category === 'TIẾT KIỆM') return 'sack'
+  if (category === 'VÍ ĐIỆN TỬ') return 'wallet'
   if (category === 'Ăn uống') return 'silverware-fork-knife'
   if (category === 'Di chuyển') return 'motorbike'
   if (category === 'Nhà cửa') return 'home-city-outline'
@@ -174,6 +215,10 @@ function mapCategoryIcon(category: string): TransactionItem['icon'] {
 }
 
 function mapCategoryColor(category: string) {
+  if (category === 'TIỀN MẶT') return '#128A3D'
+  if (category === 'NGÂN HÀNG') return '#3D94C6'
+  if (category === 'TIẾT KIỆM') return '#F0C65A'
+  if (category === 'VÍ ĐIỆN TỬ') return '#7E63F4'
   if (category === 'Ăn uống') return '#F0C65A'
   if (category === 'Di chuyển') return '#F2A493'
   if (category === 'Nhà cửa') return '#3D94C6'

@@ -14,17 +14,20 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import type { TransactionItem } from '@/shared/contexts/transaction-context'
+import { useWallets, walletTypes } from '@/shared/contexts/wallet-context'
 import {
   buildTransaction,
-  categories,
   defaultTransactionFormValues,
   formatCurrencyInput,
   normalizeDate,
-  receiveWallets,
-  wallets,
   type CreateMode,
   type TransactionFormValues,
 } from '@/shared/utils/transaction-form'
+
+type SelectionOption = {
+  value: string
+  label: string
+}
 
 type TransactionFormProps = {
   title: string
@@ -42,6 +45,7 @@ export function TransactionForm({
   onSubmit,
 }: TransactionFormProps) {
   const insets = useSafeAreaInsets()
+  const { wallets } = useWallets()
   const amountInputRef = useRef<TextInput>(null)
   const [mode, setMode] = useState<CreateMode>(initialValues.mode)
   const [amount, setAmount] = useState(initialValues.amount)
@@ -58,6 +62,18 @@ export function TransactionForm({
   >(null)
 
   const displayAmount = useMemo(() => formatCurrencyInput(amount), [amount])
+  const walletOptions = useMemo<SelectionOption[]>(
+    () =>
+      wallets.map((wallet) => ({
+        value: wallet.id,
+        label: wallet.name,
+      })),
+    [wallets],
+  )
+  const walletTypeOptions = useMemo<SelectionOption[]>(
+    () => walletTypes.map((walletType) => ({ value: walletType.label, label: walletType.label })),
+    [],
+  )
 
   useEffect(() => {
     setMode(initialValues.mode)
@@ -120,6 +136,7 @@ export function TransactionForm({
       expenseCategory,
       transferFromWallet,
       transferToWallet,
+      wallets,
     })
 
     onSubmit(transaction)
@@ -196,11 +213,13 @@ export function TransactionForm({
               <SelectorBlock
                 label='CHỌN VÍ'
                 value={expenseWallet}
+                options={walletOptions}
                 onPress={() => setOpenDropdown('expenseWallet')}
               />
               <SelectorBlock
-                label='DANH MỤC'
+                label='LOẠI VÍ'
                 value={expenseCategory}
+                options={walletTypeOptions}
                 onPress={() => setOpenDropdown('expenseCategory')}
                 withDivider
               />
@@ -212,11 +231,13 @@ export function TransactionForm({
               <SelectorBlock
                 label='VÍ GỬI'
                 value={transferFromWallet}
+                options={walletOptions}
                 onPress={() => setOpenDropdown('transferFromWallet')}
               />
               <SelectorBlock
                 label='VÍ NHẬN'
                 value={transferToWallet}
+                options={walletOptions}
                 onPress={() => setOpenDropdown('transferToWallet')}
                 withDivider
               />
@@ -269,7 +290,7 @@ export function TransactionForm({
       <SelectionModal
         visible={openDropdown === 'expenseWallet'}
         title='Chọn ví'
-        options={wallets}
+        options={walletOptions}
         onClose={() => setOpenDropdown(null)}
         onSelect={(value) => {
           setExpenseWallet(value)
@@ -278,8 +299,8 @@ export function TransactionForm({
       />
       <SelectionModal
         visible={openDropdown === 'expenseCategory'}
-        title='Chọn danh mục'
-        options={categories}
+        title='Chọn loại ví'
+        options={walletTypeOptions}
         onClose={() => setOpenDropdown(null)}
         onSelect={(value) => {
           setExpenseCategory(value)
@@ -289,7 +310,7 @@ export function TransactionForm({
       <SelectionModal
         visible={openDropdown === 'transferFromWallet'}
         title='Chọn ví gửi'
-        options={wallets}
+        options={walletOptions}
         onClose={() => setOpenDropdown(null)}
         onSelect={(value) => {
           setTransferFromWallet(value)
@@ -299,7 +320,7 @@ export function TransactionForm({
       <SelectionModal
         visible={openDropdown === 'transferToWallet'}
         title='Chọn ví nhận'
-        options={receiveWallets}
+        options={walletOptions}
         onClose={() => setOpenDropdown(null)}
         onSelect={(value) => {
           setTransferToWallet(value)
@@ -332,19 +353,22 @@ function SegmentButton({
 function SelectorBlock({
   label,
   value,
+  options,
   onPress,
   withDivider = false,
 }: {
   label: string
   value: string
+  options: SelectionOption[]
   onPress: () => void
   withDivider?: boolean
 }) {
+  const selectedOption = options.find((option) => option.value === value)
   return (
     <View style={[styles.selectorBlock, withDivider && styles.selectorBlockDivider]}>
       <Text style={styles.selectorTitle}>{label}</Text>
       <Pressable style={styles.selectorPill} onPress={onPress}>
-        <Text style={styles.selectorValue}>{value}</Text>
+        <Text style={styles.selectorValue}>{selectedOption?.label ?? value}</Text>
         <Ionicons name='chevron-down' size={16} color='#E6FFF2' />
       </Pressable>
     </View>
@@ -360,7 +384,7 @@ function SelectionModal({
 }: {
   visible: boolean
   title: string
-  options: string[]
+  options: SelectionOption[]
   onClose: () => void
   onSelect: (value: string) => void
 }) {
@@ -370,8 +394,14 @@ function SelectionModal({
         <Pressable style={styles.modalCard} onPress={() => {}}>
           <Text style={styles.modalTitle}>{title}</Text>
           {options.map((option) => (
-            <Pressable key={option} style={styles.modalOption} onPress={() => onSelect(option)}>
-              <Text style={styles.modalOptionText}>{option}</Text>
+            <Pressable
+              key={option.value}
+              style={styles.modalOption}
+              onPress={() => onSelect(option.value)}
+            >
+              <View style={styles.modalOptionContent}>
+                <Text style={styles.modalOptionText}>{option.label}</Text>
+              </View>
               <Ionicons name='chevron-forward' size={16} color='#1B4D39' />
             </Pressable>
           ))}
@@ -622,6 +652,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginTop: 8,
+  },
+  modalOptionContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   modalOptionText: {
     fontSize: 15,

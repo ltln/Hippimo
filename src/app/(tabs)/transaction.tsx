@@ -1,10 +1,11 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useTransactions, type TransactionType } from '@/shared/contexts/transaction-context'
+import { getWalletTypeMeta, useWallets, type WalletItem } from '@/shared/contexts/wallet-context'
 
 type TypeFilter = 'all' | TransactionType
 
@@ -16,7 +17,8 @@ const typeOptions: { key: TypeFilter; label: string }[] = [
 
 export default function TransactionScreen() {
   const insets = useSafeAreaInsets()
-  const { transactions } = useTransactions()
+  const { transactions, deleteTransaction } = useTransactions()
+  const { wallets } = useWallets()
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [dateQuery, setDateQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -94,7 +96,21 @@ export default function TransactionScreen() {
         ) : null}
 
         {filteredTransactions.map((item) => (
-          <DetailCard key={item.id} item={item} />
+          <DetailCard
+            key={item.id}
+            item={item}
+            wallets={wallets}
+            onDelete={() => {
+              Alert.alert('Xóa giao dịch', `Bạn có chắc muốn xóa ${item.title}?`, [
+                { text: 'Hủy', style: 'cancel' },
+                {
+                  text: 'Xóa',
+                  style: 'destructive',
+                  onPress: () => deleteTransaction(item.id),
+                },
+              ])
+            }}
+          />
         ))}
       </ScrollView>
     </SafeAreaView>
@@ -119,11 +135,16 @@ function FilterChip({
 
 function DetailCard({
   item,
+  wallets,
+  onDelete,
 }: {
   item: ReturnType<typeof useTransactions>['transactions'][number]
+  wallets: WalletItem[]
+  onDelete: () => void
 }) {
   const isTransfer = item.type === 'transfer'
-  const transferWallets = getTransferWallets(item)
+  const transferWallets = getTransferWallets(item, wallets)
+  const expenseWallet = getExpenseWallet(item, wallets)
 
   return (
     <View style={[styles.detailCard, isTransfer ? styles.detailCardDark : styles.detailCardLight]}>
@@ -135,6 +156,9 @@ function DetailCard({
         >
           <MaterialCommunityIcons name='pencil-outline' size={18} color='#E5FFF1' />
         </Pressable>
+        <Pressable hitSlop={8} onPress={onDelete} style={styles.editButton}>
+          <MaterialCommunityIcons name='trash-can-outline' size={19} color='#FFB0A4' />
+        </Pressable>
       </View>
 
       {isTransfer ? (
@@ -145,12 +169,20 @@ function DetailCard({
 
           <View style={styles.transferIconsCentered}>
             <View style={styles.transferPill}>
-              <MaterialCommunityIcons name='bank-outline' size={18} color='#0B1D17' />
+              <MaterialCommunityIcons
+                name={getWalletTypeMeta(transferWallets.fromType).icon}
+                size={18}
+                color='#0B1D17'
+              />
               <Text style={styles.transferPillText}>{transferWallets.fromWallet}</Text>
             </View>
             <Ionicons name='arrow-forward' size={18} color='#FFFFFF' />
             <View style={styles.transferPill}>
-              <MaterialCommunityIcons name='piggy-bank-outline' size={18} color='#0B1D17' />
+              <MaterialCommunityIcons
+                name={getWalletTypeMeta(transferWallets.toType).icon}
+                size={18}
+                color='#0B1D17'
+              />
               <Text style={styles.transferPillText}>{transferWallets.toWallet}</Text>
             </View>
           </View>
@@ -175,8 +207,8 @@ function DetailCard({
         <DetailLine icon='calendar-outline' text={item.detail.date} />
 
         {/* Nếu là Chi tiêu -> Hiển thị thêm Tên ví trước */}
-        {!isTransfer && item.detail.tags[0] && (
-          <DetailLine icon='wallet-outline' text={item.detail.tags[0]} />
+        {!isTransfer && expenseWallet.name && (
+          <WalletDetailLine wallet={expenseWallet.wallet} fallbackName={expenseWallet.name} />
         )}
 
         {/* Ghi chú luôn xuất hiện chung 1 format cho CẢ 2 loại giao dịch */}
@@ -206,17 +238,53 @@ function DetailLine({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text
   )
 }
 
+function WalletDetailLine({ wallet, fallbackName }: { wallet?: WalletItem; fallbackName: string }) {
+  const meta = getWalletTypeMeta(wallet?.type ?? 'cash')
+
+  return (
+    <View style={styles.detailLine}>
+      <MaterialCommunityIcons name={meta.icon} size={15} color='#F5FFF8' />
+      <Text style={styles.detailLineText}>{wallet?.name ?? fallbackName}</Text>
+    </View>
+  )
+}
+
 function normalizeDateQuery(value: string) {
   return value.trim().replaceAll('/', '-')
 }
 
-function getTransferWallets(item: ReturnType<typeof useTransactions>['transactions'][number]) {
+function getTransferWallets(
+  item: ReturnType<typeof useTransactions>['transactions'][number],
+  wallets: WalletItem[],
+) {
   const transferTag = item.detail.tags[0] ?? ''
   const [fromWallet, toWallet] = transferTag.split('->').map((value) => value.trim())
+  const fromWalletItem = wallets.find((wallet) => wallet.id === item.transferFromWalletId)
+  const toWalletItem = wallets.find((wallet) => wallet.id === item.transferToWalletId)
 
   return {
-    fromWallet: fromWallet || item.detail.footer,
-    toWallet: toWallet || 'TIẾT KIỆM',
+    fromWallet: fromWalletItem?.name ?? fromWallet ?? item.detail.footer,
+    toWallet: toWalletItem?.name ?? toWallet ?? 'TIẾT KIỆM',
+    fromType: fromWalletItem?.type ?? 'bank',
+    toType: toWalletItem?.type ?? 'saving',
+  }
+}
+
+function getExpenseWallet(
+  item: ReturnType<typeof useTransactions>['transactions'][number],
+  wallets: WalletItem[],
+) {
+  const wallet =
+    wallets.find((currentWallet) => currentWallet.id === item.walletId) ??
+    wallets.find(
+      (currentWallet) =>
+        currentWallet.name.trim().toLocaleLowerCase('vi-VN') ===
+        item.detail.tags[0]?.trim().toLocaleLowerCase('vi-VN'),
+    )
+
+  return {
+    wallet,
+    name: wallet?.name ?? item.detail.tags[0] ?? '',
   }
 }
 
@@ -232,22 +300,23 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingHorizontal: 12,
-    marginBottom: 14,
+    marginBottom: 22,
   },
   headerTitle: {
     flex: 1,
-    fontSize: 19,
+    textAlign: 'center',
+    fontSize: 30,
     fontWeight: '900',
     color: '#081A13',
-    letterSpacing: 0.4,
   },
   headerActions: {
+    position: 'absolute',
+    right: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginLeft: 12,
   },
   headerIconButton: {
     alignItems: 'center',

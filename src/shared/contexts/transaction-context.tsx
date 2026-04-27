@@ -14,6 +14,9 @@ export type TransactionItem = {
   icon: ComponentProps<typeof MaterialCommunityIcons>['name']
   iconBackground: string
   type: TransactionType
+  walletId?: string
+  transferFromWalletId?: string
+  transferToWalletId?: string
   detail: {
     amountDisplay: string
     amountColor: string
@@ -29,6 +32,7 @@ type TransactionContextValue = {
   transactions: TransactionItem[]
   addTransaction: (transaction: TransactionItem) => void
   updateTransaction: (transaction: TransactionItem) => void
+  deleteTransaction: (id: string) => void
 }
 
 const initialTransactions: TransactionItem[] = [
@@ -42,6 +46,7 @@ const initialTransactions: TransactionItem[] = [
     icon: 'motorbike',
     iconBackground: '#F2A493',
     type: 'expense',
+    walletId: 'cash-main',
     detail: {
       amountDisplay: '-50.000 VND',
       amountColor: '#FFB0A4',
@@ -62,6 +67,8 @@ const initialTransactions: TransactionItem[] = [
     icon: 'gamepad-variant-outline',
     iconBackground: '#7E63F4',
     type: 'transfer',
+    transferFromWalletId: 'bank-main',
+    transferToWalletId: 'momo-main',
     detail: {
       amountDisplay: '200.000 VND',
       amountColor: '#79F4A6',
@@ -82,6 +89,7 @@ const initialTransactions: TransactionItem[] = [
     icon: 'home-city-outline',
     iconBackground: '#3D94C6',
     type: 'expense',
+    walletId: 'bank-main',
     detail: {
       amountDisplay: '-23.000 VND',
       amountColor: '#FFDFD7',
@@ -102,6 +110,7 @@ const initialTransactions: TransactionItem[] = [
     icon: 'basket-outline',
     iconBackground: '#F0C65A',
     type: 'expense',
+    walletId: 'cash-main',
     detail: {
       amountDisplay: '-56.300 VND',
       amountColor: '#FFE0B8',
@@ -122,6 +131,7 @@ const initialTransactions: TransactionItem[] = [
     icon: 'shield-check-outline',
     iconBackground: '#3897C7',
     type: 'expense',
+    walletId: 'bank-main',
     detail: {
       amountDisplay: '-7.200 VND',
       amountColor: '#D4F8E6',
@@ -142,6 +152,7 @@ const initialTransactions: TransactionItem[] = [
     icon: 'motorbike-electric',
     iconBackground: '#0E3F33',
     type: 'expense',
+    walletId: 'cash-main',
     detail: {
       amountDisplay: '-24.300 VND',
       amountColor: '#E1FFE5',
@@ -162,6 +173,8 @@ const initialTransactions: TransactionItem[] = [
     icon: 'wallet-outline',
     iconBackground: '#8A7DFF',
     type: 'transfer',
+    transferFromWalletId: 'cash-main',
+    transferToWalletId: 'saving-main',
     detail: {
       amountDisplay: '350.000 VND',
       amountColor: '#79F4A6',
@@ -189,8 +202,14 @@ export function TransactionProvider({ children }: PropsWithChildren) {
     )
   }
 
+  const deleteTransaction = (id: string) => {
+    setTransactions((current) => current.filter((transaction) => transaction.id !== id))
+  }
+
   return (
-    <TransactionContext.Provider value={{ transactions, addTransaction, updateTransaction }}>
+    <TransactionContext.Provider
+      value={{ transactions, addTransaction, updateTransaction, deleteTransaction }}
+    >
       {children}
     </TransactionContext.Provider>
   )

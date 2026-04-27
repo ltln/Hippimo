@@ -1,7 +1,6 @@
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { Tabs } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
 
-// Vẫn giữ lại HapticTab để có hiệu ứng rung nhẹ khi bấm
 import { HapticTab } from '@/shared/components/haptic-tab'
 
 export default function TabLayout() {
@@ -9,27 +8,22 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        // Sử dụng HapticTab cho mọi nút bấm trên thanh Navigation
         tabBarButton: HapticTab,
-
-        // --- Bắt đầu phần Style theo Figma ---
+        tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: '#0A251B', // Màu nền xanh đen từ thiết kế của bạn
-          height: 70, // Chiều cao tối ưu
+          backgroundColor: '#0A251B',
+          height: 64,
           borderTopWidth: 0,
-          elevation: 0, // Xóa bóng đổ Android
-          shadowOpacity: 0, // Xóa bóng đổ iOS
+          elevation: 0,
+          shadowOpacity: 0,
         },
-        tabBarActiveTintColor: '#FFFFFF', // Màu trắng khi đang chọn tab
-        tabBarInactiveTintColor: '#8A9D93', // Màu xám xanh khi không chọn
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: 'bold',
-          marginBottom: 10,
+        tabBarItemStyle: {
+          paddingVertical: 10,
         },
+        tabBarActiveTintColor: '#FFFFFF',
+        tabBarInactiveTintColor: '#8A9D93',
       }}
     >
-      {/* 1. Tab Tổng quan */}
       <Tabs.Screen
         name='index'
         options={{
@@ -37,17 +31,22 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Ionicons name='home' size={24} color={color} />,
         }}
       />
-
-      {/* 2. Tab Giao dịch */}
       <Tabs.Screen
         name='transaction'
         options={{
           title: 'Giao dịch',
-          tabBarIcon: ({ color }) => <Ionicons name='add-circle-outline' size={28} color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons name='swap-horizontal' size={26} color={color} />,
         }}
       />
-
-      {/* 3. Tab Chat AI */}
+      <Tabs.Screen
+        name='limits'
+        options={{
+          title: 'Hạn mức',
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name='chart-donut' size={25} color={color} />
+          ),
+        }}
+      />
       <Tabs.Screen
         name='chat_ai'
         options={{
@@ -55,13 +54,18 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Ionicons name='bulb-outline' size={24} color={color} />,
         }}
       />
-
-      {/* 4. Tab Ví */}
       <Tabs.Screen
         name='wallet'
         options={{
           title: 'Ví',
           tabBarIcon: ({ color }) => <Ionicons name='wallet-outline' size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name='settings'
+        options={{
+          title: 'Cài đặt',
+          tabBarIcon: ({ color }) => <Ionicons name='settings-outline' size={24} color={color} />,
         }}
       />
     </Tabs>
