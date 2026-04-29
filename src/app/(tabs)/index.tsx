@@ -20,6 +20,7 @@ import { LoginForm } from '@/features/auth/presentation/components/login-form'
 import { useGoogleOAuth } from '@/features/auth/presentation/hooks/use-google-oauth'
 import { getRefreshToken } from '@/features/auth/utils/auth-tokens'
 import { getDeviceId } from '@/features/auth/utils/device-id'
+import { decodeJwtPayload } from '@/features/auth/utils/jwt'
 
 WebBrowser.maybeCompleteAuthSession()
 
@@ -125,6 +126,14 @@ export default function LoginScreen() {
       if (authResult.type !== 'success') {
         throw new Error(`Google OAuth returned unexpected result: ${authResult.type}`)
       }
+
+      const idTokenPayload = decodeJwtPayload(authResult.idToken)
+      console.log('Google id_token payload', {
+        audience: idTokenPayload?.aud,
+        issuer: idTokenPayload?.iss,
+        providerClientId: googleOAuth.platformClientId,
+        subject: idTokenPayload?.sub,
+      })
 
       const loginResponse = await sendGoogleTokenToBackend({
         deviceId,

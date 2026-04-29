@@ -31,7 +31,7 @@ export function LoginForm({
 }: LoginFormProps) {
   const [email, setEmail] = useState('')
   const isGoogleLoginBusy = loginState === 'loading' || loginState === 'restoring'
-  const isGoogleLoginDisabled = isGoogleLoginBusy || !isGoogleLoginAvailable
+  const isGoogleLoginDisabled = isGoogleLoginBusy
 
   const handleEmailLogin = () => {
     Alert.alert('Đăng nhập', 'Luồng đăng nhập bằng email chưa được cấu hình.')
@@ -89,7 +89,7 @@ export function LoginForm({
             style={({ pressed }) => [
               styles.socialButton,
               pressed && !isGoogleLoginDisabled && styles.pressed,
-              isGoogleLoginDisabled && styles.disabledButton,
+              (isGoogleLoginDisabled || !isGoogleLoginAvailable) && styles.disabledButton,
             ]}
           >
             {isGoogleLoginBusy ? (

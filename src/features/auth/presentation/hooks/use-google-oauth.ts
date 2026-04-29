@@ -8,6 +8,7 @@ import {
 } from '@/features/auth/data/google-auth-api'
 
 const googleScopes = ['openid', 'profile', 'email']
+const androidPackageName = 'work.hippi.hippimo'
 
 const googleDiscovery = {
   authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -23,6 +24,13 @@ type GoogleOAuthResult =
   | {
       type: 'cancel' | 'dismiss' | 'opened' | 'locked'
     }
+
+type GoogleOAuthStatus = {
+  isReady: boolean
+  platformClientId: string
+  redirectUri: string
+  signIn: () => Promise<GoogleOAuthResult>
+}
 
 const getPlatformGoogleClientId = () => {
   if (Platform.OS === 'android') {
@@ -58,9 +66,29 @@ const getMissingClientIdMessage = () => {
   return 'Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in environment config.'
 }
 
+const getRedirectUri = (AuthSession: typeof import('expo-auth-session')) => {
+  if (Platform.OS === 'android') {
+    return AuthSession.makeRedirectUri({
+      native: `${androidPackageName}:/oauthredirect`,
+    })
+  }
+
+  return AuthSession.makeRedirectUri({
+    path: 'oauthredirect',
+    scheme: 'hippimo',
+  })
+}
+
 export function useGoogleOAuth() {
   const platformClientId = useMemo(getPlatformGoogleClientId, [])
   const missingClientIdMessage = useMemo(getMissingClientIdMessage, [])
+  const nativeRedirectUri = useMemo(() => {
+    if (Platform.OS === 'android') {
+      return `${androidPackageName}:/oauthredirect`
+    }
+
+    return 'hippimo://oauthredirect'
+  }, [])
 
   const exchangeCodeForIdToken = useCallback(
     async (
@@ -98,10 +126,7 @@ export function useGoogleOAuth() {
 
     try {
       const AuthSession = await import('expo-auth-session')
-      const redirectUri = AuthSession.makeRedirectUri({
-        path: 'oauthredirect',
-        scheme: 'hippimo',
-      })
+      const redirectUri = getRedirectUri(AuthSession)
       const request = new AuthSession.AuthRequest({
         clientId: platformClientId,
         prompt: AuthSession.Prompt.SelectAccount,
@@ -155,7 +180,7 @@ export function useGoogleOAuth() {
   return {
     isReady: Boolean(platformClientId),
     platformClientId,
-    redirectUri: null,
+    redirectUri: nativeRedirectUri,
     signIn,
-  }
+  } satisfies GoogleOAuthStatus
 }
