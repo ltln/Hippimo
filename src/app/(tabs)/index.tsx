@@ -1,99 +1,184 @@
-import { Image } from 'expo-image'
-import { Platform, StyleSheet } from 'react-native'
+import * as WebBrowser from 'expo-web-browser'
+import { useEffect, useState } from 'react'
+import { Platform } from 'react-native'
 
-import { HelloWave } from '@/shared/components/hello-wave'
-import ParallaxScrollView from '@/shared/components/parallax-scroll-view'
-import { ThemedText } from '@/shared/components/themed-text'
-import { ThemedView } from '@/shared/components/themed-view'
-import { Link } from 'expo-router'
+import {
+  apiBaseUrl,
+  googleLoginEndpoint,
+  logoutBackendSession,
+  refreshBackendToken,
+  sendGoogleTokenToBackend,
+} from '@/features/auth/data/google-auth-api'
+import {
+  clearAuthSession,
+  loadAuthSession,
+  saveAuthSession,
+} from '@/features/auth/data/auth-session-storage'
+import type { GoogleLoginResponse, LoginState } from '@/features/auth/domain/google-auth.types'
+import { AuthHome } from '@/features/auth/presentation/components/auth-home'
+import { LoginForm } from '@/features/auth/presentation/components/login-form'
+import { useGoogleOAuth } from '@/features/auth/presentation/hooks/use-google-oauth'
+import { getRefreshToken } from '@/features/auth/utils/auth-tokens'
+import { getDeviceId } from '@/features/auth/utils/device-id'
 
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
+WebBrowser.maybeCompleteAuthSession()
+
+export default function LoginScreen() {
+  const [authResponse, setAuthResponse] = useState<GoogleLoginResponse | null>(null)
+  const [loginState, setLoginState] = useState<LoginState>('idle')
+  const [message, setMessage] = useState('')
+  const googleOAuth = useGoogleOAuth()
+
+  useEffect(() => {
+    let isMounted = true
+
+    const restoreAuthSession = async () => {
+      setLoginState('restoring')
+      setMessage('Restoring login session...')
+
+      try {
+        const storedAuthResponse = await loadAuthSession()
+
+        if (!isMounted) {
+          return
+        }
+
+        if (storedAuthResponse) {
+          const refreshToken = getRefreshToken(storedAuthResponse.tokens)
+
+          if (!refreshToken) {
+            throw new Error('Stored auth session is missing a refresh token.')
+          }
+
+          const refreshResponse = await refreshBackendToken({ refreshToken })
+          const refreshedAuthResponse: GoogleLoginResponse = {
+            ...storedAuthResponse,
+            message: refreshResponse.message,
+            tokens: refreshResponse.tokens,
+            user: refreshResponse.user,
+          }
+
+          await saveAuthSession(refreshedAuthResponse)
+
+          if (!isMounted) {
+            return
+          }
+
+          setAuthResponse(refreshedAuthResponse)
+          setLoginState('success')
+          setMessage(refreshResponse.message)
+          return
+        }
+      } catch (error) {
+        console.error('Restore login failed', error)
+
+        try {
+          await clearAuthSession()
+        } catch (clearError) {
+          console.error('Clear stored auth session failed', clearError)
+        }
       }
-    >
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type='title'>Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type='subtitle'>Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type='defaultSemiBold'>app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type='defaultSemiBold'>
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href='/modal'>
-          <Link.Trigger>
-            <ThemedText type='subtitle'>Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title='Action' icon='cube' onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title='Share'
-              icon='square.and.arrow.up'
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title='More' icon='ellipsis'>
-              <Link.MenuAction
-                title='Delete'
-                icon='trash'
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type='subtitle'>Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type='defaultSemiBold'>npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type='defaultSemiBold'>app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type='defaultSemiBold'>app</ThemedText> to{' '}
-          <ThemedText type='defaultSemiBold'>app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      if (isMounted) {
+        setLoginState('idle')
+        setMessage('')
+      }
+    }
+
+    restoreAuthSession()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const handleGoogleLogin = async () => {
+    const deviceId = getDeviceId()
+
+    try {
+      setLoginState('loading')
+      setMessage('')
+      setAuthResponse(null)
+      console.log('Google login config', {
+        apiBaseUrl,
+        deviceId,
+        endpoint: googleLoginEndpoint,
+        platform: Platform.OS,
+        providerClientId: googleOAuth.platformClientId,
+        redirectUri: googleOAuth.redirectUri,
+      })
+
+      const authResult = await googleOAuth.signIn()
+
+      if (authResult.type === 'cancel' || authResult.type === 'dismiss') {
+        setLoginState('idle')
+        setMessage('Google login was cancelled.')
+        return
+      }
+
+      if (authResult.type === 'locked' || authResult.type === 'opened') {
+        setLoginState('idle')
+        setMessage('Google login is already in progress.')
+        return
+      }
+
+      if (authResult.type !== 'success') {
+        throw new Error(`Google OAuth returned unexpected result: ${authResult.type}`)
+      }
+
+      const loginResponse = await sendGoogleTokenToBackend({
+        deviceId,
+        idToken: authResult.idToken,
+      })
+
+      try {
+        await saveAuthSession(loginResponse)
+      } catch (error) {
+        console.error('Persist login failed', error)
+      }
+
+      setAuthResponse(loginResponse)
+      setLoginState('success')
+      setMessage(loginResponse.message)
+    } catch (error) {
+      setLoginState('error')
+      console.error('Google login failed', error)
+      setMessage(error instanceof Error ? error.message : 'Could not login with Google.')
+    }
+  }
+
+  const handleSignOut = async () => {
+    const refreshToken = getRefreshToken(authResponse?.tokens)
+
+    setAuthResponse(null)
+    setLoginState('idle')
+    setMessage('')
+
+    if (refreshToken) {
+      try {
+        await logoutBackendSession({ refreshToken })
+      } catch (error) {
+        console.error('Backend logout failed', error)
+      }
+    }
+
+    try {
+      await clearAuthSession()
+    } catch (error) {
+      console.error('Clear stored auth session failed', error)
+    }
+  }
+
+  if (loginState === 'success' && authResponse) {
+    return <AuthHome authResponse={authResponse} onSignOut={handleSignOut} />
+  }
+
+  return (
+    <LoginForm
+      isGoogleLoginAvailable={googleOAuth.isReady}
+      loginState={loginState}
+      message={message}
+      onGoogleLogin={handleGoogleLogin}
+    />
   )
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-})
