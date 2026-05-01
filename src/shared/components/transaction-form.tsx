@@ -57,8 +57,14 @@ export function TransactionForm({
   const [transferFromWallet, setTransferFromWallet] = useState(initialValues.transferFromWallet)
   const [transferToWallet, setTransferToWallet] = useState(initialValues.transferToWallet)
   const [transactionDate, setTransactionDate] = useState(initialValues.transactionDate)
+  const [newCategory, setNewCategory] = useState('')
   const [openDropdown, setOpenDropdown] = useState<
-    null | 'expenseWallet' | 'expenseCategory' | 'transferFromWallet' | 'transferToWallet'
+    | null
+    | 'expenseWallet'
+    | 'expenseCategory'
+    | 'transferFromWallet'
+    | 'transferToWallet'
+    | 'customCategory'
   >(null)
 
   const displayAmount = useMemo(() => formatCurrencyInput(amount), [amount])
@@ -71,7 +77,12 @@ export function TransactionForm({
     [wallets],
   )
   const walletTypeOptions = useMemo<SelectionOption[]>(
-    () => walletTypes.map((walletType) => ({ value: walletType.label, label: walletType.label })),
+    () => [
+      ...['Ăn uống', 'Di chuyển', 'Nhà cửa', 'Giải trí', 'Mua sắm', 'Làm đẹp'].map((cat) => ({
+        value: cat,
+        label: cat,
+      })),
+    ],
     [],
   )
 
@@ -246,6 +257,25 @@ export function TransactionForm({
         )}
 
         <View style={styles.card}>
+          <Text style={styles.sectionTitle}>DANH MỤC</Text>
+          <View style={styles.categoryContainer}>
+            <TextInput
+              value={expenseCategory}
+              onChangeText={setExpenseCategory}
+              placeholder='Nhập tên danh mục'
+              placeholderTextColor='#B8CEC3'
+              style={styles.categoryInput}
+            />
+            <Pressable
+              style={styles.categoryListButton}
+              onPress={() => setOpenDropdown('expenseCategory')}
+            >
+              <Ionicons name='list' size={22} color='#FFFFFF' />
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.card}>
           <Text style={styles.sectionTitle}>NGÀY GIAO DỊCH</Text>
           <View style={styles.dateRow}>
             <View style={styles.datePill}>
@@ -299,7 +329,7 @@ export function TransactionForm({
       />
       <SelectionModal
         visible={openDropdown === 'expenseCategory'}
-        title='Chọn loại ví'
+        title='Chọn danh mục'
         options={walletTypeOptions}
         onClose={() => setOpenDropdown(null)}
         onSelect={(value) => {
@@ -663,5 +693,37 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: '#1B4D39',
+  },
+  input: {
+    backgroundColor: '#063629',
+    borderRadius: 12,
+    padding: 12,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  categoryContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  categoryInput: {
+    flex: 1,
+    backgroundColor: '#F2F5F2',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#072D20',
+    fontWeight: '700',
+  },
+  categoryListButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#063629',
+    borderRadius: 12,
+    width: 44,
+    height: 44,
   },
 })

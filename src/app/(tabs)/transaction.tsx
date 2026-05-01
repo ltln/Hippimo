@@ -44,7 +44,7 @@ export default function TransactionScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>CHI TIẾT GIAO DỊCH</Text>
+          <Text style={styles.headerTitle}>GIAO DỊCH</Text>
           <View style={styles.headerActions}>
             <Pressable
               onPress={() => setShowFilters((current) => !current)}
@@ -162,29 +162,45 @@ function DetailCard({
       </View>
 
       {isTransfer ? (
-        <View style={styles.transferCardBody}>
-          <Text style={[styles.transferAmount, { color: item.detail.amountColor }]}>
-            {item.detail.amountDisplay}
-          </Text>
+        <View style={styles.detailTop}>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={[styles.transferAmount, { color: item.detail.amountColor, textAlign: 'left' }]}
+            >
+              {item.detail.amountDisplay}
+            </Text>
 
-          <View style={styles.transferIconsCentered}>
-            <View style={styles.transferPill}>
-              <MaterialCommunityIcons
-                name={getWalletTypeMeta(transferWallets.fromType).icon}
-                size={18}
-                color='#0B1D17'
-              />
-              <Text style={styles.transferPillText}>{transferWallets.fromWallet}</Text>
+            <View
+              style={[
+                styles.transferIconsCentered,
+                { justifyContent: 'flex-start', marginTop: 10 },
+              ]}
+            >
+              <View style={styles.transferPill}>
+                <MaterialCommunityIcons
+                  name={getWalletTypeMeta(transferWallets.fromType).icon}
+                  size={14}
+                  color='#0B1D17'
+                />
+                <Text style={styles.transferPillText}>{transferWallets.fromWallet}</Text>
+              </View>
+              <Ionicons name='arrow-forward' size={14} color='#FFFFFF' />
+              <View style={styles.transferPill}>
+                <MaterialCommunityIcons
+                  name={getWalletTypeMeta(transferWallets.toType).icon}
+                  size={14}
+                  color='#0B1D17'
+                />
+                <Text style={styles.transferPillText}>{transferWallets.toWallet}</Text>
+              </View>
             </View>
-            <Ionicons name='arrow-forward' size={18} color='#FFFFFF' />
-            <View style={styles.transferPill}>
-              <MaterialCommunityIcons
-                name={getWalletTypeMeta(transferWallets.toType).icon}
-                size={18}
-                color='#0B1D17'
-              />
-              <Text style={styles.transferPillText}>{transferWallets.toWallet}</Text>
+          </View>
+
+          <View style={[styles.detailIconWrap, styles.detailIconWrapDark]}>
+            <View style={styles.detailRoundIcon}>
+              <MaterialCommunityIcons name='swap-horizontal' size={24} color='#D4F8E6' />
             </View>
+            <Text style={styles.detailFooterTitle}>Chuyển tiền ví</Text>
           </View>
         </View>
       ) : (
