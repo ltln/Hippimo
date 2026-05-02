@@ -4,13 +4,16 @@ import { useMemo, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import { useTransactions, type TransactionItem } from '@/shared/contexts/transaction-context'
+import {
+  useTransactions,
+  type TransactionItem,
+} from '@/features/transaction/data/transaction-context'
 import {
   formatVnd,
   getWalletTypeMeta,
   useWallets,
   type WalletItem,
-} from '@/shared/contexts/wallet-context'
+} from '@/features/wallet/data/wallet-context'
 
 export default function WalletScreen() {
   const insets = useSafeAreaInsets()

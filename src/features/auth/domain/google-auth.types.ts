@@ -17,7 +17,11 @@ export type GoogleLoginResponse = {
   message: string
   user: unknown
   tokens: AuthTokens
-  google: GoogleProfile
+  google?: GoogleProfile
+}
+
+export type EmailLoginDto = {
+  email: string
 }
 
 export type GoogleMobileLoginDto = {

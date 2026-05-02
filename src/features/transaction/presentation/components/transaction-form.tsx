@@ -13,8 +13,8 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import type { TransactionItem } from '@/shared/contexts/transaction-context'
-import { useWallets, walletTypes } from '@/shared/contexts/wallet-context'
+import type { TransactionItem } from '@/features/transaction/data/transaction-context'
+import { useWallets, walletTypes } from '@/features/wallet/data/wallet-context'
 import {
   buildTransaction,
   defaultTransactionFormValues,
@@ -22,7 +22,7 @@ import {
   normalizeDate,
   type CreateMode,
   type TransactionFormValues,
-} from '@/shared/utils/transaction-form'
+} from '@/features/transaction/utils/transaction-form'
 
 type SelectionOption = {
   value: string

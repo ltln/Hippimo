@@ -20,6 +20,7 @@ type LoginFormProps = {
   loginState: LoginState
   message: string
   isGoogleLoginAvailable?: boolean
+  onEmailLogin: (email: string) => void
   onGoogleLogin: () => void
 }
 
@@ -27,14 +28,15 @@ export function LoginForm({
   loginState,
   message,
   isGoogleLoginAvailable = true,
+  onEmailLogin,
   onGoogleLogin,
 }: LoginFormProps) {
   const [email, setEmail] = useState('')
-  const isGoogleLoginBusy = loginState === 'loading' || loginState === 'restoring'
-  const isGoogleLoginDisabled = isGoogleLoginBusy
+  const isLoginBusy = loginState === 'loading' || loginState === 'restoring'
+  const isGoogleLoginDisabled = isLoginBusy || !isGoogleLoginAvailable
 
   const handleEmailLogin = () => {
-    Alert.alert('Đăng nhập', 'Luồng đăng nhập bằng email chưa được cấu hình.')
+    onEmailLogin(email)
   }
 
   const handleAppleLogin = () => {
@@ -70,10 +72,19 @@ export function LoginForm({
 
           <Pressable
             accessibilityRole='button'
+            disabled={isLoginBusy}
             onPress={handleEmailLogin}
-            style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && !isLoginBusy && styles.pressed,
+              isLoginBusy && styles.disabledButton,
+            ]}
           >
-            <Text style={styles.primaryButtonText}>ĐĂNG NHẬP</Text>
+            {isLoginBusy ? (
+              <ActivityIndicator color='#FFFFFF' />
+            ) : (
+              <Text style={styles.primaryButtonText}>ĐĂNG NHẬP</Text>
+            )}
           </Pressable>
 
           <View style={styles.dividerRow}>
@@ -89,10 +100,10 @@ export function LoginForm({
             style={({ pressed }) => [
               styles.socialButton,
               pressed && !isGoogleLoginDisabled && styles.pressed,
-              (isGoogleLoginDisabled || !isGoogleLoginAvailable) && styles.disabledButton,
+              isGoogleLoginDisabled && styles.disabledButton,
             ]}
           >
-            {isGoogleLoginBusy ? (
+            {isLoginBusy ? (
               <ActivityIndicator color={colors.green} />
             ) : (
               <MaterialCommunityIcons name='google' size={28} color='#4285F4' />

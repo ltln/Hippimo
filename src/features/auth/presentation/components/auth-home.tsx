@@ -14,14 +14,14 @@ type AuthHomeProps = {
 
 export function AuthHome({ authResponse, onSignOut }: AuthHomeProps) {
   const tokenKeys = useMemo(() => getObjectKeys(authResponse.tokens), [authResponse.tokens])
-  const googleName = authResponse.google.name ?? 'Google user'
-  const googleEmail = authResponse.google.email ?? 'Không có email'
+  const displayName = authResponse.google?.name ?? 'Người dùng'
+  const displayEmail = authResponse.google?.email ?? 'Không có email'
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.homeContent} showsVerticalScrollIndicator={false}>
         <View style={styles.homeHeader}>
-          {authResponse.google.picture ? (
+          {authResponse.google?.picture ? (
             <Image source={{ uri: authResponse.google.picture }} style={styles.avatar} />
           ) : (
             <View style={styles.avatarFallback}>
@@ -31,8 +31,8 @@ export function AuthHome({ authResponse, onSignOut }: AuthHomeProps) {
 
           <View style={styles.homeTitleGroup}>
             <Text style={styles.welcomeLabel}>Xin chào</Text>
-            <Text style={styles.homeTitle}>{googleName}</Text>
-            <Text style={styles.homeSubtitle}>{googleEmail}</Text>
+            <Text style={styles.homeTitle}>{displayName}</Text>
+            <Text style={styles.homeSubtitle}>{displayEmail}</Text>
           </View>
         </View>
 
@@ -43,9 +43,9 @@ export function AuthHome({ authResponse, onSignOut }: AuthHomeProps) {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Google</Text>
-          <DetailRow label='Sub' value={authResponse.google.sub} />
-          <DetailRow label='Email' value={authResponse.google.email} />
-          <DetailRow label='Name' value={authResponse.google.name} />
+          <DetailRow label='Sub' value={authResponse.google?.sub} />
+          <DetailRow label='Email' value={authResponse.google?.email} />
+          <DetailRow label='Name' value={authResponse.google?.name} />
         </View>
 
         <View style={styles.section}>

@@ -75,12 +75,7 @@ function isGoogleLoginResponse(value: unknown): value is GoogleLoginResponse {
 
   const candidate = value as Partial<GoogleLoginResponse>
 
-  return (
-    typeof candidate.message === 'string' &&
-    Boolean(getAuthTokens(candidate.tokens)) &&
-    typeof candidate.google === 'object' &&
-    candidate.google !== null
-  )
+  return typeof candidate.message === 'string' && Boolean(getAuthTokens(candidate.tokens))
 }
 
 export async function saveAuthSession(authResponse: GoogleLoginResponse) {

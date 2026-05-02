@@ -3,6 +3,8 @@ import { router } from 'expo-router'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { useAuth } from '@/features/auth/data/auth-context'
+
 const settingItems = [
   {
     label: 'Thông tin tài khoản',
@@ -45,6 +47,21 @@ const settingItems = [
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets()
+  const { signOut } = useAuth()
+
+  const handleSignOut = () => {
+    Alert.alert('Đăng xuất', 'Bạn có muốn đăng xuất khỏi Hippimo?', [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Đăng xuất',
+        style: 'destructive',
+        onPress: () => {
+          signOut()
+          router.replace('/login')
+        },
+      },
+    ])
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
@@ -67,6 +84,10 @@ export default function SettingsScreen() {
               <Text style={styles.itemText}>{item.label}</Text>
             </Pressable>
           ))}
+          <Pressable style={[styles.item, styles.signOutItem]} onPress={handleSignOut}>
+            <MaterialCommunityIcons name='logout' size={25} color='#E9FFF1' />
+            <Text style={styles.itemText}>Đăng xuất</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -118,5 +139,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '900',
+  },
+  signOutItem: {
+    backgroundColor: '#9F2D25',
   },
 })

@@ -1,193 +1,484 @@
-import * as WebBrowser from 'expo-web-browser'
-import { useEffect, useState } from 'react'
-import { Platform } from 'react-native'
+import type { ComponentProps } from 'react'
+import { useMemo } from 'react'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
+import { router } from 'expo-router'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { useTransactions } from '@/features/transaction/data/transaction-context'
 import {
-  apiBaseUrl,
-  googleLoginEndpoint,
-  logoutBackendSession,
-  refreshBackendToken,
-  sendGoogleTokenToBackend,
-} from '@/features/auth/data/google-auth-api'
-import {
-  clearAuthSession,
-  loadAuthSession,
-  saveAuthSession,
-} from '@/features/auth/data/auth-session-storage'
-import type { GoogleLoginResponse, LoginState } from '@/features/auth/domain/google-auth.types'
-import { AuthHome } from '@/features/auth/presentation/components/auth-home'
-import { LoginForm } from '@/features/auth/presentation/components/login-form'
-import { useGoogleOAuth } from '@/features/auth/presentation/hooks/use-google-oauth'
-import { getRefreshToken } from '@/features/auth/utils/auth-tokens'
-import { getDeviceId } from '@/features/auth/utils/device-id'
-import { decodeJwtPayload } from '@/features/auth/utils/jwt'
+  formatVnd,
+  getWalletTypeMeta,
+  type WalletItem,
+  useWallets,
+} from '@/features/wallet/data/wallet-context'
 
-WebBrowser.maybeCompleteAuthSession()
+type MaterialIconName = ComponentProps<typeof MaterialCommunityIcons>['name']
 
-export default function LoginScreen() {
-  const [authResponse, setAuthResponse] = useState<GoogleLoginResponse | null>(null)
-  const [loginState, setLoginState] = useState<LoginState>('idle')
-  const [message, setMessage] = useState('')
-  const googleOAuth = useGoogleOAuth()
+const chartBars = [64, 94, 42, 118, 74, 98, 56]
+const weekDays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
 
-  useEffect(() => {
-    let isMounted = true
+export default function DashboardScreen() {
+  const insets = useSafeAreaInsets()
+  const { wallets } = useWallets()
+  const { transactions } = useTransactions()
 
-    const restoreAuthSession = async () => {
-      setLoginState('restoring')
-      setMessage('Restoring login session...')
-
-      try {
-        const storedAuthResponse = await loadAuthSession()
-
-        if (!isMounted) {
-          return
-        }
-
-        if (storedAuthResponse) {
-          const refreshToken = getRefreshToken(storedAuthResponse.tokens)
-
-          if (!refreshToken) {
-            throw new Error('Stored auth session is missing a refresh token.')
-          }
-
-          const refreshResponse = await refreshBackendToken({ refreshToken })
-          const refreshedAuthResponse: GoogleLoginResponse = {
-            ...storedAuthResponse,
-            message: refreshResponse.message,
-            tokens: refreshResponse.tokens,
-            user: refreshResponse.user,
-          }
-
-          await saveAuthSession(refreshedAuthResponse)
-
-          if (!isMounted) {
-            return
-          }
-
-          setAuthResponse(refreshedAuthResponse)
-          setLoginState('success')
-          setMessage(refreshResponse.message)
-          return
-        }
-      } catch (error) {
-        console.error('Restore login failed', error)
-
-        try {
-          await clearAuthSession()
-        } catch (clearError) {
-          console.error('Clear stored auth session failed', clearError)
-        }
-      }
-
-      if (isMounted) {
-        setLoginState('idle')
-        setMessage('')
-      }
-    }
-
-    restoreAuthSession()
-
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
-  const handleGoogleLogin = async () => {
-    const deviceId = getDeviceId()
-
-    try {
-      setLoginState('loading')
-      setMessage('')
-      setAuthResponse(null)
-      console.log('Google login config', {
-        apiBaseUrl,
-        deviceId,
-        endpoint: googleLoginEndpoint,
-        platform: Platform.OS,
-        providerClientId: googleOAuth.platformClientId,
-        redirectUri: googleOAuth.redirectUri,
-      })
-
-      const authResult = await googleOAuth.signIn()
-
-      if (authResult.type === 'cancel' || authResult.type === 'dismiss') {
-        setLoginState('idle')
-        setMessage('Google login was cancelled.')
-        return
-      }
-
-      if (authResult.type === 'locked' || authResult.type === 'opened') {
-        setLoginState('idle')
-        setMessage('Google login is already in progress.')
-        return
-      }
-
-      if (authResult.type !== 'success') {
-        throw new Error(`Google OAuth returned unexpected result: ${authResult.type}`)
-      }
-
-      const idTokenPayload = decodeJwtPayload(authResult.idToken)
-      console.log('Google id_token payload', {
-        audience: idTokenPayload?.aud,
-        issuer: idTokenPayload?.iss,
-        providerClientId: googleOAuth.platformClientId,
-        subject: idTokenPayload?.sub,
-      })
-
-      const loginResponse = await sendGoogleTokenToBackend({
-        deviceId,
-        idToken: authResult.idToken,
-      })
-
-      try {
-        await saveAuthSession(loginResponse)
-      } catch (error) {
-        console.error('Persist login failed', error)
-      }
-
-      setAuthResponse(loginResponse)
-      setLoginState('success')
-      setMessage(loginResponse.message)
-    } catch (error) {
-      setLoginState('error')
-      console.error('Google login failed', error)
-      setMessage(error instanceof Error ? error.message : 'Could not login with Google.')
-    }
-  }
-
-  const handleSignOut = async () => {
-    const refreshToken = getRefreshToken(authResponse?.tokens)
-
-    setAuthResponse(null)
-    setLoginState('idle')
-    setMessage('')
-
-    if (refreshToken) {
-      try {
-        await logoutBackendSession({ refreshToken })
-      } catch (error) {
-        console.error('Backend logout failed', error)
-      }
-    }
-
-    try {
-      await clearAuthSession()
-    } catch (error) {
-      console.error('Clear stored auth session failed', error)
-    }
-  }
-
-  if (loginState === 'success' && authResponse) {
-    return <AuthHome authResponse={authResponse} onSignOut={handleSignOut} />
-  }
+  const totalBalance = useMemo(
+    () => wallets.reduce((total, wallet) => total + wallet.balance, 0),
+    [wallets],
+  )
+  const recentTransactions = transactions.slice(0, 4)
+  const visibleWallets = wallets.slice(0, 4)
 
   return (
-    <LoginForm
-      isGoogleLoginAvailable={googleOAuth.isReady}
-      loginState={loginState}
-      message={message}
-      onGoogleLogin={handleGoogleLogin}
-    />
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <Pressable style={styles.headerButton} accessibilityLabel='Thông báo'>
+          <Ionicons name='notifications-outline' size={22} color='#12392C' />
+        </Pressable>
+        <Text style={styles.headerTitle}>T4, 01/04</Text>
+        <Pressable
+          style={styles.headerButton}
+          accessibilityLabel='Cài đặt'
+          onPress={() => router.push('/(tabs)/settings')}
+        >
+          <Ionicons name='settings-outline' size={22} color='#12392C' />
+        </Pressable>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 92 }]}
+      >
+        <SectionHeader title='CHI TIÊU' />
+
+        <View style={styles.chartCard}>
+          <View>
+            <Text style={styles.chartMonth}>Tháng 07 / 2026</Text>
+            <Text style={styles.chartAmount}>{formatVnd(totalBalance || 3000000)}</Text>
+          </View>
+
+          <View style={styles.chartArea}>
+            {chartBars.map((height, index) => (
+              <View key={weekDays[index]} style={styles.barColumn}>
+                <View style={[styles.bar, { height }]}>
+                  <View
+                    style={[
+                      styles.barSegment,
+                      index % 2 === 0 ? styles.barSegmentFood : styles.barSegmentShop,
+                    ]}
+                  />
+                </View>
+                <Text style={styles.dayLabel}>{weekDays[index]}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.legendRow}>
+            <LegendPill color='#11382B' label='Ăn uống' />
+            <LegendPill color='#E9695F' label='Mua sắm' />
+          </View>
+        </View>
+
+        <SectionHeader
+          title='DANH SÁCH VÍ'
+          action='XEM TẤT CẢ >'
+          onActionPress={() => router.push('/(tabs)/wallet')}
+        />
+        <View style={styles.walletList}>
+          {visibleWallets.map((wallet, index) => (
+            <WalletRow key={wallet.id} wallet={wallet} fallbackIndex={index} />
+          ))}
+        </View>
+
+        <SectionHeader
+          title='GIAO DỊCH GẦN ĐÂY'
+          action='XEM TẤT CẢ >'
+          onActionPress={() => router.push('/(tabs)/transaction')}
+        />
+        <View style={styles.transactionsCard}>
+          {recentTransactions.map((transaction) => (
+            <View key={transaction.id} style={styles.transactionRow}>
+              <View
+                style={[styles.transactionIcon, { backgroundColor: transaction.iconBackground }]}
+              >
+                <MaterialCommunityIcons name={transaction.icon} size={20} color='#FFFFFF' />
+              </View>
+              <View style={styles.transactionBody}>
+                <Text style={styles.transactionTitle}>{transaction.title}</Text>
+                <Text style={styles.transactionDate}>{transaction.dateLabel}</Text>
+              </View>
+              <Text
+                style={[
+                  styles.transactionAmount,
+                  transaction.amountValue < 0
+                    ? styles.transactionExpense
+                    : styles.transactionIncome,
+                ]}
+              >
+                {transaction.amount}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <SectionHeader
+          title='AI & NGÂN SÁCH'
+          action='MỞ CHAT AI >'
+          onActionPress={() => router.push('/(tabs)/chat_ai')}
+        />
+        <View style={styles.aiCard}>
+          <View style={styles.budgetRow}>
+            <View style={styles.aiIconBubble}>
+              <MaterialCommunityIcons name='chart-donut' size={23} color='#0E372B' />
+            </View>
+            <View style={styles.budgetBody}>
+              <View style={styles.budgetHeader}>
+                <Text style={styles.budgetTitle}>Ngân sách tháng</Text>
+                <Text style={styles.budgetPercent}>68%</Text>
+              </View>
+              <View style={styles.progressTrack}>
+                <View style={styles.progressFill} />
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.insightRow}>
+            <View style={styles.aiIconBubble}>
+              <Ionicons name='sparkles-outline' size={22} color='#0E372B' />
+            </View>
+            <View style={styles.insightBody}>
+              <Text style={styles.insightTitle}>AI gợi ý</Text>
+              <Text style={styles.insightText}>
+                Chi tiêu ăn uống đang ổn định. Bạn có thể giữ thêm 300.000 VND cho cuối tuần.
+              </Text>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   )
 }
+
+function SectionHeader({
+  action,
+  onActionPress,
+  title,
+}: {
+  action?: string
+  onActionPress?: () => void
+  title: string
+}) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {action ? (
+        <Pressable onPress={onActionPress} hitSlop={8}>
+          <Text style={styles.sectionAction}>{action}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  )
+}
+
+function LegendPill({ color, label }: { color: string; label: string }) {
+  return (
+    <View style={styles.legendPill}>
+      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <Text style={styles.legendLabel}>{label}</Text>
+    </View>
+  )
+}
+
+function WalletRow({ fallbackIndex, wallet }: { fallbackIndex: number; wallet: WalletItem }) {
+  const meta = getWalletTypeMeta(wallet.type)
+  const displayName = wallet.name || `Ví ${fallbackIndex + 1}`
+
+  return (
+    <View style={styles.walletRow}>
+      <View style={styles.walletIcon}>
+        <MaterialCommunityIcons name={meta.icon as MaterialIconName} size={22} color='#0C3025' />
+      </View>
+      <Text style={styles.walletName}>{displayName}</Text>
+      <Text style={styles.walletAmount}>{formatVnd(wallet.balance)}</Text>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F7FBF5',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 22,
+    paddingBottom: 18,
+    backgroundColor: '#F7FBF5',
+  },
+  headerButton: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 19,
+    backgroundColor: '#EAF3E6',
+  },
+  headerTitle: {
+    color: '#12392C',
+    fontSize: 19,
+    fontWeight: '800',
+  },
+  content: {
+    paddingHorizontal: 22,
+    gap: 14,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  sectionTitle: {
+    color: '#12392C',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+  },
+  sectionAction: {
+    color: '#12392C',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+  chartCard: {
+    borderRadius: 26,
+    backgroundColor: '#79C77C',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 16,
+    gap: 16,
+  },
+  chartMonth: {
+    color: '#E9F8E2',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  chartAmount: {
+    marginTop: 4,
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  chartArea: {
+    height: 150,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    borderRadius: 18,
+    backgroundColor: '#8DD590',
+    paddingHorizontal: 12,
+    paddingTop: 14,
+    paddingBottom: 8,
+  },
+  barColumn: {
+    width: 26,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 7,
+  },
+  bar: {
+    width: 18,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+    borderRadius: 10,
+    backgroundColor: '#CFECC2',
+  },
+  barSegment: {
+    width: '100%',
+    height: '42%',
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+  },
+  barSegmentFood: {
+    backgroundColor: '#12392C',
+  },
+  barSegmentShop: {
+    backgroundColor: '#E9695F',
+  },
+  dayLabel: {
+    color: '#E9F8E2',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  legendRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  legendPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderRadius: 14,
+    backgroundColor: '#E9F8E2',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  legendDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+  },
+  legendLabel: {
+    color: '#12392C',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  walletList: {
+    gap: 10,
+  },
+  walletRow: {
+    minHeight: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 17,
+    backgroundColor: '#79C77C',
+    paddingHorizontal: 14,
+  },
+  walletIcon: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 19,
+    backgroundColor: '#DDF2D2',
+  },
+  walletName: {
+    flex: 1,
+    marginLeft: 12,
+    color: '#0C3025',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  walletAmount: {
+    color: '#0C3025',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  transactionsCard: {
+    borderRadius: 22,
+    backgroundColor: '#79C77C',
+    paddingVertical: 6,
+  },
+  transactionRow: {
+    minHeight: 62,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+  },
+  transactionIcon: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 19,
+  },
+  transactionBody: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  transactionTitle: {
+    color: '#0C3025',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  transactionDate: {
+    marginTop: 3,
+    color: '#245442',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  transactionAmount: {
+    maxWidth: 112,
+    textAlign: 'right',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  transactionExpense: {
+    color: '#B3261E',
+  },
+  transactionIncome: {
+    color: '#0C3025',
+  },
+  aiCard: {
+    borderRadius: 22,
+    backgroundColor: '#79C77C',
+    padding: 16,
+    gap: 16,
+  },
+  budgetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  aiIconBubble: {
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 21,
+    backgroundColor: '#DDF2D2',
+  },
+  budgetBody: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  budgetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  budgetTitle: {
+    color: '#0C3025',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  budgetPercent: {
+    color: '#0C3025',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  progressTrack: {
+    height: 9,
+    overflow: 'hidden',
+    borderRadius: 5,
+    backgroundColor: '#DDF2D2',
+    marginTop: 9,
+  },
+  progressFill: {
+    width: '68%',
+    height: '100%',
+    borderRadius: 5,
+    backgroundColor: '#12392C',
+  },
+  insightRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  insightBody: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  insightTitle: {
+    color: '#0C3025',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  insightText: {
+    marginTop: 4,
+    color: '#245442',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17,
+  },
+})
