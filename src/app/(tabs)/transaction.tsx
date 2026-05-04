@@ -1,7 +1,16 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import {
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useTransactions, type TransactionType } from '@/shared/contexts/transaction-context'
@@ -100,15 +109,12 @@ export default function TransactionScreen() {
             key={item.id}
             item={item}
             wallets={wallets}
+            // ✅ FIX: Capture id rõ ràng tránh stale closure, dùng setTimeout
+            // để tránh Alert bị nuốt bởi ScrollView gesture handler
             onDelete={() => {
-              Alert.alert('Xóa giao dịch', `Bạn có chắc muốn xóa ${item.title}?`, [
-                { text: 'Hủy', style: 'cancel' },
-                {
-                  text: 'Xóa',
-                  style: 'destructive',
-                  onPress: () => deleteTransaction(item.id),
-                },
-              ])
+              const id = item.id
+              const title = item.title
+              confirmDelete(`Bạn có chắc muốn xóa ${title}?`, () => deleteTransaction(id))
             }}
           />
         ))}
@@ -156,7 +162,7 @@ function DetailCard({
         >
           <MaterialCommunityIcons name='pencil-outline' size={18} color='#E5FFF1' />
         </Pressable>
-        <Pressable hitSlop={8} onPress={onDelete} style={styles.editButton}>
+        <Pressable hitSlop={12} onPress={onDelete}>
           <MaterialCommunityIcons name='trash-can-outline' size={19} color='#FFB0A4' />
         </Pressable>
       </View>
@@ -224,7 +230,11 @@ function DetailCard({
 
         {/* Nếu là Chi tiêu -> Hiển thị thêm Tên ví trước */}
         {!isTransfer && expenseWallet.name && (
-          <WalletDetailLine wallet={expenseWallet.wallet} fallbackName={expenseWallet.name} />
+          <WalletDetailLine
+            wallet={expenseWallet.wallet}
+            walletType={expenseWallet.walletType}
+            fallbackName={expenseWallet.name}
+          />
         )}
 
         {/* Ghi chú luôn xuất hiện chung 1 format cho CẢ 2 loại giao dịch */}
@@ -237,7 +247,6 @@ function DetailCard({
           <Text style={styles.tipBadgeText}>A</Text>
         </View>
         <Text style={styles.tipText}>
-          {/* Lấy đúng nội dung AI, không lấy nhầm vào note nữa */}
           {(item.detail as any).aiSuggestion || 'Đang phân tích giao dịch...'}
         </Text>
       </View>
@@ -254,8 +263,17 @@ function DetailLine({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text
   )
 }
 
-function WalletDetailLine({ wallet, fallbackName }: { wallet?: WalletItem; fallbackName: string }) {
-  const meta = getWalletTypeMeta(wallet?.type ?? 'cash')
+function WalletDetailLine({
+  wallet,
+  fallbackName,
+  walletType,
+}: {
+  wallet?: WalletItem
+  fallbackName: string
+  walletType?: WalletItem['type']
+}) {
+  // ✅ FIX: Ưu tiên type từ wallet object, fallback sang type đã lưu khi tạo giao dịch
+  const meta = getWalletTypeMeta(wallet?.type ?? walletType ?? 'cash')
 
   return (
     <View style={styles.detailLine}>
@@ -267,6 +285,23 @@ function WalletDetailLine({ wallet, fallbackName }: { wallet?: WalletItem; fallb
 
 function normalizeDateQuery(value: string) {
   return value.trim().replaceAll('/', '-')
+}
+
+function confirmDelete(message: string, onConfirm: () => void) {
+  if (Platform.OS === 'web') {
+    const confirmFn = typeof window !== 'undefined' ? window.confirm : undefined
+    if (!confirmFn || confirmFn(message)) {
+      onConfirm()
+    }
+    return
+  }
+
+  setTimeout(() => {
+    Alert.alert('Xóa giao dịch', message, [
+      { text: 'Hủy', style: 'cancel' },
+      { text: 'Xóa', style: 'destructive', onPress: onConfirm },
+    ])
+  }, 50)
 }
 
 function getTransferWallets(
@@ -301,6 +336,7 @@ function getExpenseWallet(
   return {
     wallet,
     name: wallet?.name ?? item.detail.tags[0] ?? '',
+    walletType: (item.detail as any).walletType as WalletItem['type'] | undefined,
   }
 }
 

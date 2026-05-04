@@ -1,7 +1,16 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import {
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useTransactions, type TransactionItem } from '@/shared/contexts/transaction-context'
@@ -78,10 +87,9 @@ export default function WalletScreen() {
               transactionBelongsToWallet(transaction, wallet),
             )}
             onDelete={() => {
-              Alert.alert('Xóa ví', `Bạn có chắc muốn xóa ${wallet.name}?`, [
-                { text: 'Hủy', style: 'cancel' },
-                { text: 'Xóa', style: 'destructive', onPress: () => deleteWallet(wallet.id) },
-              ])
+              const id = wallet.id
+              const name = wallet.name
+              confirmDelete(`Bạn có chắc muốn xóa ${name}?`, () => deleteWallet(id))
             }}
           />
         ))}
@@ -212,6 +220,23 @@ function getPercentColor(percent: number) {
   if (percent >= 40) return '#FFCD24'
   if (percent >= 20) return '#FFB0A4'
   return '#FF6A5E'
+}
+
+function confirmDelete(message: string, onConfirm: () => void) {
+  if (Platform.OS === 'web') {
+    const confirmFn = typeof window !== 'undefined' ? window.confirm : undefined
+    if (!confirmFn || confirmFn(message)) {
+      onConfirm()
+    }
+    return
+  }
+
+  setTimeout(() => {
+    Alert.alert('Xóa ví', message, [
+      { text: 'Hủy', style: 'cancel' },
+      { text: 'Xóa', style: 'destructive', onPress: onConfirm },
+    ])
+  }, 50)
 }
 
 const styles = StyleSheet.create({

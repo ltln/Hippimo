@@ -9,19 +9,22 @@ export type TransactionFormValues = {
   note: string
   expenseWallet: string
   expenseCategory: string
+  expenseWalletType: string
   transferFromWallet: string
   transferToWallet: string
   transactionDate: string
 }
 
-export const categories = ['TIỀN MẶT', 'NGÂN HÀNG', 'TIẾT KIỆM', 'VÍ ĐIỆN TỬ']
+// ✅ FIX: Đồng bộ với walletTypeOptions trong transaction-form.tsx (chữ thường)
+export const categories = ['Tiền mặt', 'Ngân hàng', 'Tiết kiệm', 'Ví điện tử']
 
 export const defaultTransactionFormValues: TransactionFormValues = {
   mode: 'expense',
   amount: '400000',
   note: '',
   expenseWallet: 'cash-main',
-  expenseCategory: 'TIỀN MẶT',
+  expenseCategory: 'Ăn uống',
+  expenseWalletType: 'Tiền mặt', // ✅ FIX: Đồng bộ chữ thường
   transferFromWallet: 'cash-main',
   transferToWallet: 'momo-main',
   transactionDate: '29/04/2026',
@@ -54,6 +57,7 @@ export function buildTransaction({
   mode,
   note,
   expenseWallet,
+  expenseWalletTypeLabel,
   expenseCategory,
   transferFromWallet,
   transferToWallet,
@@ -65,6 +69,7 @@ export function buildTransaction({
   mode: CreateMode
   note: string
   expenseWallet: string
+  expenseWalletTypeLabel?: string
   expenseCategory: string
   transferFromWallet: string
   transferToWallet: string
@@ -74,6 +79,9 @@ export function buildTransaction({
   const normalizedNote = note.trim() || 'Giao dịch mới vừa được thêm từ màn hình nhập tay.'
   const formattedAmount = `${new Intl.NumberFormat('vi-VN').format(amountValue)} VND`
   const expenseWalletItem = findWallet(wallets, expenseWallet)
+  const expenseWalletTypeFallback = expenseWalletTypeLabel
+    ? walletLabelToType(expenseWalletTypeLabel)
+    : undefined
   const fromWalletItem = findWallet(wallets, transferFromWallet)
   const toWalletItem = findWallet(wallets, transferToWallet)
   const expenseWalletName = expenseWalletItem?.name ?? expenseWallet
@@ -125,6 +133,8 @@ export function buildTransaction({
       note: normalizedNote,
       aiSuggestion: `Có vẻ bạn đang chi cho ${expenseCategory.toLowerCase()}?`,
       footer: expenseCategory,
+      // ✅ FIX: Lưu walletType để getTransactionFormValues đọc lại đúng loại ví
+      walletType: expenseWalletItem?.type ?? expenseWalletTypeFallback ?? 'cash',
       rightContent: 'icon',
     } as any,
   }
@@ -146,7 +156,8 @@ export function getTransactionFormValues(
       amount,
       note: transaction.detail.note,
       expenseWallet: defaultTransactionFormValues.expenseWallet,
-      expenseCategory: defaultTransactionFormValues.expenseCategory,
+      expenseCategory: 'Chuyển tiền ví',
+      expenseWalletType: defaultTransactionFormValues.expenseWalletType,
       transferFromWallet:
         transaction.transferFromWalletId ??
         matchKnownWalletId(fromWalletRaw || transaction.detail.footer, wallets),
@@ -155,16 +166,47 @@ export function getTransactionFormValues(
     }
   }
 
+  // ✅ FIX: Đọc walletType từ detail (được lưu bởi buildTransaction),
+  // fallback sang tìm trong wallets theo walletId.
+  // Không dùng footer nữa vì footer = tên danh mục (VD: "Ăn uống"), không phải loại ví.
+  const savedWalletType = (transaction.detail as any).walletType
+  const walletFromId = wallets.find((w) => w.id === transaction.walletId)
+  const resolvedWalletType = savedWalletType ?? walletFromId?.type ?? 'cash'
+
   return {
     mode: 'expense',
     amount,
     note: transaction.detail.note,
     expenseWallet: transaction.walletId ?? matchKnownWalletId(transaction.detail.tags[0], wallets),
-    expenseCategory: matchKnownOption(transaction.detail.footer || transaction.title, categories),
+    expenseCategory: transaction.title,
+    expenseWalletType: walletTypeToLabel(resolvedWalletType), // ✅ FIX: dùng helper map đúng
     transferFromWallet: defaultTransactionFormValues.transferFromWallet,
     transferToWallet: defaultTransactionFormValues.transferToWallet,
     transactionDate,
   }
+}
+
+// ✅ FIX: Map wallet type key → label khớp với walletTypeOptions trong form
+export function walletTypeToLabel(type: string): string {
+  switch (type) {
+    case 'bank':
+      return 'Ngân hàng'
+    case 'saving':
+      return 'Tiết kiệm'
+    case 'digital':
+      return 'Ví điện tử'
+    case 'cash':
+    default:
+      return 'Tiền mặt'
+  }
+}
+
+function walletLabelToType(label: string): WalletItem['type'] {
+  const normalized = label.trim().toLocaleLowerCase('vi-VN')
+  if (normalized === 'ngân hàng') return 'bank'
+  if (normalized === 'tiết kiệm') return 'saving'
+  if (normalized === 'ví điện tử') return 'digital'
+  return 'cash'
 }
 
 function findWallet(wallets: WalletItem[], value: string) {
@@ -189,39 +231,66 @@ function matchKnownWalletId(value: string | undefined, wallets: WalletItem[]) {
   return findWallet(wallets, value)?.id ?? wallets[0].id
 }
 
-function matchKnownOption(value: string | undefined, options: string[]) {
-  if (!value) {
-    return options[0]
-  }
-
-  const normalizedValue = value.trim().toLocaleLowerCase('vi-VN')
-  const matchedOption = options.find(
-    (option) => option.trim().toLocaleLowerCase('vi-VN') === normalizedValue,
-  )
-
-  return matchedOption ?? options[0]
-}
-
 function mapCategoryIcon(category: string): TransactionItem['icon'] {
-  if (category === 'TIỀN MẶT') return 'cash'
-  if (category === 'NGÂN HÀNG') return 'bank'
-  if (category === 'TIẾT KIỆM') return 'sack'
-  if (category === 'VÍ ĐIỆN TỬ') return 'wallet'
+  const upper = category.toUpperCase()
+  if (upper === 'TIỀN MẶT') return 'cash'
+  if (upper === 'NGÂN HÀNG') return 'bank'
+  if (upper === 'TIẾT KIỆM') return 'sack'
+  if (upper === 'VÍ ĐIỆN TỬ') return 'wallet'
   if (category === 'Ăn uống') return 'silverware-fork-knife'
   if (category === 'Di chuyển') return 'motorbike'
   if (category === 'Nhà cửa') return 'home-city-outline'
   if (category === 'Giải trí') return 'gamepad-variant-outline'
-  return 'cash'
+  if (category === 'Mua sắm') return 'shopping-outline'
+  if (category === 'Làm đẹp') return 'face-woman-outline'
+  if (category === 'Chuyển tiền ví') return 'swap-horizontal'
+  return pickFromList(category, customCategoryIcons)
 }
 
 function mapCategoryColor(category: string) {
-  if (category === 'TIỀN MẶT') return '#128A3D'
-  if (category === 'NGÂN HÀNG') return '#3D94C6'
-  if (category === 'TIẾT KIỆM') return '#F0C65A'
-  if (category === 'VÍ ĐIỆN TỬ') return '#7E63F4'
+  const upper = category.toUpperCase()
+  if (upper === 'TIỀN MẶT') return '#128A3D'
+  if (upper === 'NGÂN HÀNG') return '#3D94C6'
+  if (upper === 'TIẾT KIỆM') return '#F0C65A'
+  if (upper === 'VÍ ĐIỆN TỬ') return '#7E63F4'
   if (category === 'Ăn uống') return '#F0C65A'
   if (category === 'Di chuyển') return '#F2A493'
   if (category === 'Nhà cửa') return '#3D94C6'
   if (category === 'Giải trí') return '#7E63F4'
-  return '#3897C7'
+  if (category === 'Mua sắm') return '#FFB347'
+  if (category === 'Làm đẹp') return '#F59BD4'
+  if (category === 'Chuyển tiền ví') return '#8A7DFF'
+  return pickFromList(category, customCategoryColors)
+}
+
+const customCategoryIcons: TransactionItem['icon'][] = [
+  'basket-outline',
+  'coffee-outline',
+  'car-outline',
+  'book-open-variant',
+  'medical-bag',
+  'music-circle-outline',
+  'tag-outline',
+  'lightbulb-outline',
+]
+
+const customCategoryColors = [
+  '#F0C65A',
+  '#F2A493',
+  '#3D94C6',
+  '#7E63F4',
+  '#79F4A6',
+  '#FFB0A4',
+  '#8A7DFF',
+  '#3897C7',
+]
+
+function pickFromList<T>(value: string, list: T[]): T {
+  const normalized = value.trim().toLocaleLowerCase('vi-VN')
+  let hash = 0
+  for (let i = 0; i < normalized.length; i += 1) {
+    hash = (hash * 31 + normalized.charCodeAt(i)) % 2147483647
+  }
+  const index = list.length > 0 ? Math.abs(hash) % list.length : 0
+  return list[index]
 }

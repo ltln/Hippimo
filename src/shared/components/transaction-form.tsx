@@ -14,12 +14,13 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import type { TransactionItem } from '@/shared/contexts/transaction-context'
-import { useWallets, walletTypes } from '@/shared/contexts/wallet-context'
+import { useWallets } from '@/shared/contexts/wallet-context'
 import {
   buildTransaction,
   defaultTransactionFormValues,
   formatCurrencyInput,
   normalizeDate,
+  walletTypeToLabel,
   type CreateMode,
   type TransactionFormValues,
 } from '@/shared/utils/transaction-form'
@@ -29,6 +30,14 @@ type SelectionOption = {
   label: string
 }
 
+const categoryOptions: SelectionOption[] = [
+  { value: 'Ăn uống', label: 'Ăn uống' },
+  { value: 'Di chuyển', label: 'Di chuyển' },
+  { value: 'Nhà cửa', label: 'Nhà cửa' },
+  { value: 'Giải trí', label: 'Giải trí' },
+  { value: 'Mua sắm', label: 'Mua sắm' },
+  { value: 'Làm đẹp', label: 'Làm đẹp' },
+]
 type TransactionFormProps = {
   title: string
   submitLabel: string
@@ -52,7 +61,11 @@ export function TransactionForm({
   const [amountFocused, setAmountFocused] = useState(false)
   const [note, setNote] = useState(initialValues.note)
   const noteRef = useRef(initialValues.note)
+  const lastExpenseCategoryRef = useRef(initialValues.expenseCategory)
   const [expenseWallet, setExpenseWallet] = useState(initialValues.expenseWallet)
+  const [expenseWalletType, setExpenseWalletType] = useState(
+    (initialValues as any)?.expenseWalletType || 'Tiền mặt',
+  )
   const [expenseCategory, setExpenseCategory] = useState(initialValues.expenseCategory)
   const [transferFromWallet, setTransferFromWallet] = useState(initialValues.transferFromWallet)
   const [transferToWallet, setTransferToWallet] = useState(initialValues.transferToWallet)
@@ -61,6 +74,7 @@ export function TransactionForm({
   const [openDropdown, setOpenDropdown] = useState<
     | null
     | 'expenseWallet'
+    | 'expenseWalletType'
     | 'expenseCategory'
     | 'transferFromWallet'
     | 'transferToWallet'
@@ -78,10 +92,10 @@ export function TransactionForm({
   )
   const walletTypeOptions = useMemo<SelectionOption[]>(
     () => [
-      ...['Ăn uống', 'Di chuyển', 'Nhà cửa', 'Giải trí', 'Mua sắm', 'Làm đẹp'].map((cat) => ({
-        value: cat,
-        label: cat,
-      })),
+      { value: 'Tiền mặt', label: 'Tiền mặt' },
+      { value: 'Ngân hàng', label: 'Ngân hàng' },
+      { value: 'Tiết kiệm', label: 'Tiết kiệm' },
+      { value: 'Ví điện tử', label: 'Ví điện tử' },
     ],
     [],
   )
@@ -91,11 +105,44 @@ export function TransactionForm({
     setAmount(initialValues.amount)
     setNote(initialValues.note)
     setExpenseWallet(initialValues.expenseWallet)
+    setExpenseWalletType((initialValues as any)?.expenseWalletType || 'Tiền mặt')
     setExpenseCategory(initialValues.expenseCategory)
+    lastExpenseCategoryRef.current =
+      initialValues.mode === 'transfer'
+        ? defaultTransactionFormValues.expenseCategory
+        : initialValues.expenseCategory
     setTransferFromWallet(initialValues.transferFromWallet)
     setTransferToWallet(initialValues.transferToWallet)
     setTransactionDate(initialValues.transactionDate)
   }, [initialValues])
+
+  useEffect(() => {
+    if (mode === 'transfer') {
+      setExpenseCategory('Chuyển tiền ví')
+      return
+    }
+
+    if (expenseCategory === 'Chuyển tiền ví') {
+      setExpenseCategory(
+        lastExpenseCategoryRef.current || defaultTransactionFormValues.expenseCategory,
+      )
+    }
+  }, [mode])
+
+  useEffect(() => {
+    const matchedWallet = wallets.find((wallet) => wallet.id === expenseWallet)
+    if (!matchedWallet) {
+      return
+    }
+
+    setExpenseWalletType(walletTypeToLabel(matchedWallet.type))
+  }, [expenseWallet, wallets])
+
+  useEffect(() => {
+    if (mode === 'expense' && expenseCategory && expenseCategory !== 'Chuyển tiền ví') {
+      lastExpenseCategoryRef.current = expenseCategory
+    }
+  }, [expenseCategory, mode])
 
   useEffect(() => {
     if (!amountFocused) {
@@ -144,6 +191,7 @@ export function TransactionForm({
       mode,
       note: noteRef.current,
       expenseWallet,
+      expenseWalletTypeLabel: expenseWalletType,
       expenseCategory,
       transferFromWallet,
       transferToWallet,
@@ -229,10 +277,12 @@ export function TransactionForm({
               />
               <SelectorBlock
                 label='LOẠI VÍ'
-                value={expenseCategory}
+                value={expenseWalletType}
                 options={walletTypeOptions}
-                onPress={() => setOpenDropdown('expenseCategory')}
+                onPress={() => {}}
                 withDivider
+                hideChevron
+                interactive={false}
               />
             </View>
           </View>
@@ -265,12 +315,18 @@ export function TransactionForm({
               placeholder='Nhập tên danh mục'
               placeholderTextColor='#B8CEC3'
               style={styles.categoryInput}
+              editable={mode === 'expense'}
             />
             <Pressable
               style={styles.categoryListButton}
-              onPress={() => setOpenDropdown('expenseCategory')}
+              onPress={() => {
+                if (mode === 'expense') {
+                  setOpenDropdown('expenseCategory')
+                }
+              }}
+              disabled={mode !== 'expense'}
             >
-              <Ionicons name='list' size={22} color='#FFFFFF' />
+              <Ionicons name='list' size={22} color={mode === 'expense' ? '#FFFFFF' : '#B8CEC3'} />
             </Pressable>
           </View>
         </View>
@@ -328,12 +384,27 @@ export function TransactionForm({
         }}
       />
       <SelectionModal
-        visible={openDropdown === 'expenseCategory'}
-        title='Chọn danh mục'
+        visible={openDropdown === 'expenseWalletType'}
+        title='Chọn loại ví'
         options={walletTypeOptions}
         onClose={() => setOpenDropdown(null)}
         onSelect={(value) => {
-          setExpenseCategory(value)
+          setExpenseWalletType(value)
+          setOpenDropdown(null)
+        }}
+      />
+      <SelectionModal
+        visible={openDropdown === 'expenseCategory'}
+        title='Chọn danh mục'
+        options={categoryOptions}
+        onClose={() => setOpenDropdown(null)}
+        onSelect={(value) => {
+          // Nếu chọn "Chuyển tiền ví" thì tự động switch sang mode transfer
+          if (value === '__transfer__') {
+            setMode('transfer')
+          } else {
+            setExpenseCategory(value)
+          }
           setOpenDropdown(null)
         }}
       />
@@ -386,21 +457,32 @@ function SelectorBlock({
   options,
   onPress,
   withDivider = false,
+  hideChevron = false,
+  interactive = true,
 }: {
   label: string
   value: string
   options: SelectionOption[]
   onPress: () => void
   withDivider?: boolean
+  hideChevron?: boolean
+  interactive?: boolean
 }) {
   const selectedOption = options.find((option) => option.value === value)
   return (
     <View style={[styles.selectorBlock, withDivider && styles.selectorBlockDivider]}>
       <Text style={styles.selectorTitle}>{label}</Text>
-      <Pressable style={styles.selectorPill} onPress={onPress}>
-        <Text style={styles.selectorValue}>{selectedOption?.label ?? value}</Text>
-        <Ionicons name='chevron-down' size={16} color='#E6FFF2' />
-      </Pressable>
+      {interactive ? (
+        <Pressable style={styles.selectorPill} onPress={onPress}>
+          <Text style={styles.selectorValue}>{selectedOption?.label ?? value}</Text>
+          {!hideChevron && <Ionicons name='chevron-down' size={16} color='#E6FFF2' />}
+        </Pressable>
+      ) : (
+        <View style={styles.selectorPill}>
+          <Text style={styles.selectorValue}>{selectedOption?.label ?? value}</Text>
+          {!hideChevron && <Ionicons name='chevron-down' size={16} color='#E6FFF2' />}
+        </View>
+      )}
     </View>
   )
 }

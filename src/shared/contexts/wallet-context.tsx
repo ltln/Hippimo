@@ -24,10 +24,10 @@ export const walletTypes: {
 ]
 
 const initialWallets: WalletItem[] = [
-  { id: 'cash-main', name: 'Ví ABC', type: 'cash', balance: 400000, spent: 1000000 },
-  { id: 'bank-main', name: 'Ngân hàng', type: 'bank', balance: 2300000, spent: 750000 },
-  { id: 'saving-main', name: 'Ví dự phòng', type: 'saving', balance: 1500000, spent: 250000 },
-  { id: 'momo-main', name: 'MoMo', type: 'digital', balance: 620000, spent: 380000 },
+  { id: 'cash-main', name: 'Ví 1', type: 'cash', balance: 400000, spent: 1000000 },
+  { id: 'bank-main', name: 'Ví 2', type: 'bank', balance: 2300000, spent: 750000 },
+  { id: 'saving-main', name: 'Ví 3', type: 'saving', balance: 1500000, spent: 250000 },
+  { id: 'momo-main', name: 'Ví 4', type: 'digital', balance: 620000, spent: 380000 },
 ]
 
 type WalletContextValue = {

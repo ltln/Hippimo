@@ -1,7 +1,16 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import {
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useLimits, type LimitItem, type LimitPeriod } from '@/shared/contexts/limit-context'
@@ -90,10 +99,9 @@ export default function LimitsScreen() {
             key={limit.id}
             limit={limit}
             onDelete={() => {
-              Alert.alert('Xóa hạn mức', `Bạn có chắc muốn xóa ${limit.title}?`, [
-                { text: 'Hủy', style: 'cancel' },
-                { text: 'Xóa', style: 'destructive', onPress: () => deleteLimit(limit.id) },
-              ])
+              const id = limit.id
+              const title = limit.title
+              confirmDelete(`Bạn có chắc muốn xóa ${title}?`, () => deleteLimit(id))
             }}
           />
         ))}
@@ -231,3 +239,20 @@ const styles = StyleSheet.create({
   progressTextRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   progressText: { fontSize: 12, color: '#444' },
 })
+
+function confirmDelete(message: string, onConfirm: () => void) {
+  if (Platform.OS === 'web') {
+    const confirmFn = typeof window !== 'undefined' ? window.confirm : undefined
+    if (!confirmFn || confirmFn(message)) {
+      onConfirm()
+    }
+    return
+  }
+
+  setTimeout(() => {
+    Alert.alert('Xóa hạn mức', message, [
+      { text: 'Hủy', style: 'cancel' },
+      { text: 'Xóa', style: 'destructive', onPress: onConfirm },
+    ])
+  }, 50)
+}
