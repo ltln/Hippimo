@@ -8,8 +8,6 @@
 
 ## Description
 
--
-
 ## Related Tickets & Documents
 
 - Related Issue #
