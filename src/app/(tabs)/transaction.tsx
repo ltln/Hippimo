@@ -4,8 +4,15 @@ import { useMemo, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import { useTransactions, type TransactionType } from '@/shared/contexts/transaction-context'
-import { getWalletTypeMeta, useWallets, type WalletItem } from '@/shared/contexts/wallet-context'
+import {
+  useTransactions,
+  type TransactionType,
+} from '@/features/transaction/data/transaction-context'
+import {
+  getWalletTypeMeta,
+  useWallets,
+  type WalletItem,
+} from '@/features/wallet/data/wallet-context'
 
 type TypeFilter = 'all' | TransactionType
 

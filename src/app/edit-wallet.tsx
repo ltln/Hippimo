@@ -1,8 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router'
 import { Alert, StyleSheet, Text, View } from 'react-native'
 
-import { WalletForm } from '@/shared/components/wallet-form'
-import { useWallets } from '@/shared/contexts/wallet-context'
+import { WalletForm } from '@/features/wallet/presentation/components/wallet-form'
+import { useWallets } from '@/features/wallet/data/wallet-context'
 
 export default function EditWalletScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>()

@@ -1,5 +1,8 @@
-import type { TransactionItem, TransactionType } from '@/shared/contexts/transaction-context'
-import type { WalletItem } from '@/shared/contexts/wallet-context'
+import type {
+  TransactionItem,
+  TransactionType,
+} from '@/features/transaction/data/transaction-context'
+import type { WalletItem } from '@/features/wallet/data/wallet-context'
 
 export type CreateMode = TransactionType
 

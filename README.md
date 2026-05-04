@@ -42,3 +42,97 @@
 ---
 
 ## CÀI ĐẶT VÀ KHỞI CHẠY
+
+### 1. Yêu cầu môi trường
+
+- **Node.js** bản LTS, khuyến nghị `>= 20`
+- **npm** để cài đặt dependency và chạy script
+- **Android Studio** nếu muốn chạy trên Android Emulator hoặc thiết bị Android
+- **Xcode** nếu muốn chạy trên iOS (chỉ khả dụng trên macOS)
+- **Expo Dev Client** để kiểm thử ứng dụng
+
+### 2. Cài đặt dependency
+
+```bash
+npm install
+```
+
+### 3. Cấu hình biến môi trường
+
+Tạo file `.env` từ file mẫu:
+
+```bash
+cp .env.example .env
+```
+
+Nếu dùng Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+_(Tùy chọn nếu dev Backend)_ Cập nhật các biến cần thiết trong `.env`:
+
+```env
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=your_android_client_id
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_web_client_id
+EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:3000/api/v1
+```
+
+Lưu ý:
+
+- `EXPO_PUBLIC_API_BASE_URL` là địa chỉ backend mà ứng dụng sẽ gọi tới.
+- `http://10.0.2.2:3000` phù hợp khi chạy ứng dụng trên **Android Emulator** và backend chạy trên máy local.
+- Nếu chạy trên thiết bị thật hoặc môi trường khác, hãy đổi sang IP/URL backend tương ứng.
+- Nếu cần đăng nhập Google trên iOS, bổ sung thêm biến `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` vào file `.env`.
+
+### 4. Khởi chạy dự án
+
+Khởi động Expo development server:
+
+```bash
+npm run start
+```
+
+Chạy với Expo Dev Client:
+
+```bash
+npm run dev
+```
+
+Chạy trên Android:
+
+```bash
+npm run android
+```
+
+Chạy trên iOS:
+
+```bash
+npm run ios
+```
+
+### 5. Một số lệnh hỗ trợ
+
+Kiểm tra lỗi lint:
+
+```bash
+npm run lint
+```
+
+Kiểm tra kiểu dữ liệu TypeScript:
+
+```bash
+npm run typecheck
+```
+
+Format mã nguồn:
+
+```bash
+npm run format:fix
+```
+
+### 6. Ghi chú
+
+- Dự án hiện dùng **Expo Router**, **Expo Dev Client**, `expo-auth-session` và `expo-secure-store`.
+- Nếu gặp lỗi thiếu native module khi test đăng nhập Google hoặc lưu phiên đăng nhập, hãy rebuild và cài lại **Expo Dev Client**.

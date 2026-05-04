@@ -9,8 +9,8 @@ import {
   type WalletItem,
   type WalletType,
   walletTypes,
-} from '@/shared/contexts/wallet-context'
-import { formatCurrencyInput } from '@/shared/utils/transaction-form'
+} from '@/features/wallet/data/wallet-context'
+import { formatCurrencyInput } from '@/features/transaction/utils/transaction-form'
 
 type WalletFormProps = {
   title: string
