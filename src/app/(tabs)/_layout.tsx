@@ -44,6 +44,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name='limits'
+        options={{
+          title: 'Hạn mức',
+          tabBarIcon: ({ color }) => <Ionicons name='stats-chart' size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name='chat_ai'
         options={{
           title: 'Chat AI',
@@ -57,8 +64,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Ionicons name='wallet-outline' size={23} color={color} />,
         }}
       />
-      <Tabs.Screen name='limits' options={{ href: null }} />
-      <Tabs.Screen name='settings' options={{ href: null }} />
+      <Tabs.Screen
+        name='settings'
+        options={{
+          title: 'Cài đặt',
+          tabBarIcon: ({ color }) => <Ionicons name='settings-outline' size={22} color={color} />,
+        }}
+      />
     </Tabs>
   )
 }

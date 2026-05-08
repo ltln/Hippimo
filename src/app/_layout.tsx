@@ -9,6 +9,7 @@ import appTamaguiConfig from 'tamagui.config'
 import { AuthGate, AuthProvider } from '@/features/auth/data/auth-context'
 import { TransactionProvider } from '@/features/transaction/data/transaction-context'
 import { WalletProvider } from '@/features/wallet/data/wallet-context'
+import { LimitProvider } from '@/shared/contexts/limit-context'
 import { useColorScheme } from '@/shared/hooks/use-color-scheme'
 
 export const unstable_settings = {
@@ -24,25 +25,29 @@ export default function RootLayout() {
         <AuthProvider>
           <WalletProvider>
             <TransactionProvider>
-              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-                <AuthGate>
-                  <Stack>
-                    <Stack.Screen name='login' options={{ headerShown: false }} />
-                    <Stack.Screen name='(tabs)' options={{ headerShown: false }} />
-                    <Stack.Screen name='add-transaction' options={{ headerShown: false }} />
-                    <Stack.Screen name='edit-transaction' options={{ headerShown: false }} />
-                    <Stack.Screen name='add-wallet' options={{ headerShown: false }} />
-                    <Stack.Screen name='edit-wallet' options={{ headerShown: false }} />
-                    <Stack.Screen name='account-info' options={{ headerShown: false }} />
-                    <Stack.Screen name='oauthredirect' options={{ headerShown: false }} />
-                    <Stack.Screen
-                      name='modal'
-                      options={{ presentation: 'modal', title: 'Modal' }}
-                    />
-                  </Stack>
-                </AuthGate>
-                <StatusBar style='auto' />
-              </ThemeProvider>
+              <LimitProvider>
+                <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                  <AuthGate>
+                    <Stack>
+                      <Stack.Screen name='login' options={{ headerShown: false }} />
+                      <Stack.Screen name='(tabs)' options={{ headerShown: false }} />
+                      <Stack.Screen name='add-transaction' options={{ headerShown: false }} />
+                      <Stack.Screen name='edit-transaction' options={{ headerShown: false }} />
+                      <Stack.Screen name='add-wallet' options={{ headerShown: false }} />
+                      <Stack.Screen name='edit-wallet' options={{ headerShown: false }} />
+                      <Stack.Screen name='add-limit' options={{ headerShown: false }} />
+                      <Stack.Screen name='edit-limit' options={{ headerShown: false }} />
+                      <Stack.Screen name='account-info' options={{ headerShown: false }} />
+                      <Stack.Screen name='oauthredirect' options={{ headerShown: false }} />
+                      <Stack.Screen
+                        name='modal'
+                        options={{ presentation: 'modal', title: 'Modal' }}
+                      />
+                    </Stack>
+                  </AuthGate>
+                  <StatusBar style='auto' />
+                </ThemeProvider>
+              </LimitProvider>
             </TransactionProvider>
           </WalletProvider>
         </AuthProvider>
