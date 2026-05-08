@@ -1,7 +1,7 @@
 import { router } from 'expo-router'
 
-import { TransactionForm } from '@/shared/components/transaction-form'
-import { useTransactions } from '@/shared/contexts/transaction-context'
+import { TransactionForm } from '@/features/transaction/presentation/components/transaction-form'
+import { useTransactions } from '@/features/transaction/data/transaction-context'
 
 export default function AddTransactionScreen() {
   const { addTransaction } = useTransactions()

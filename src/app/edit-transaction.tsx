@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router'
 import { Alert, Text, View } from 'react-native'
 
-import { TransactionForm } from '@/shared/components/transaction-form'
-import { useTransactions } from '@/shared/contexts/transaction-context'
-import { useWallets } from '@/shared/contexts/wallet-context'
-import { getTransactionFormValues } from '@/shared/utils/transaction-form'
+import { TransactionForm } from '@/features/transaction/presentation/components/transaction-form'
+import { useTransactions } from '@/features/transaction/data/transaction-context'
+import { useWallets } from '@/features/wallet/data/wallet-context'
+import { getTransactionFormValues } from '@/features/transaction/utils/transaction-form'
 
 export default function EditTransactionScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>()

@@ -13,8 +13,8 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import type { TransactionItem } from '@/shared/contexts/transaction-context'
-import { useWallets } from '@/shared/contexts/wallet-context'
+import type { TransactionItem } from '@/features/transaction/data/transaction-context'
+import { useWallets } from '@/features/wallet/data/wallet-context'
 import {
   buildTransaction,
   defaultTransactionFormValues,
@@ -23,7 +23,7 @@ import {
   walletTypeToLabel,
   type CreateMode,
   type TransactionFormValues,
-} from '@/shared/utils/transaction-form'
+} from '@/features/transaction/utils/transaction-form'
 
 type SelectionOption = {
   value: string
@@ -59,7 +59,6 @@ export function TransactionForm({
   const [mode, setMode] = useState<CreateMode>(initialValues.mode)
   const [amount, setAmount] = useState(initialValues.amount)
   const [amountFocused, setAmountFocused] = useState(false)
-  const [note, setNote] = useState(initialValues.note)
   const noteRef = useRef(initialValues.note)
   const lastExpenseCategoryRef = useRef(initialValues.expenseCategory)
   const [expenseWallet, setExpenseWallet] = useState(initialValues.expenseWallet)
@@ -103,7 +102,7 @@ export function TransactionForm({
   useEffect(() => {
     setMode(initialValues.mode)
     setAmount(initialValues.amount)
-    setNote(initialValues.note)
+    noteRef.current = initialValues.note
     setExpenseWallet(initialValues.expenseWallet)
     setExpenseWalletType((initialValues as any)?.expenseWalletType || 'Tiền mặt')
     setExpenseCategory(initialValues.expenseCategory)
