@@ -15,7 +15,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import type { LimitItem, LimitPeriod } from '@/shared/contexts/limit-context'
 
-// Mảng danh mục chi tiêu đồng bộ với transaction-form[cite: 7]
 const categoryOptions = [
   { value: 'Ăn uống', label: 'Ăn uống' },
   { value: 'Di chuyển', label: 'Di chuyển' },
@@ -56,7 +55,7 @@ export function LimitForm({
   )
   const [openDropdown, setOpenDropdown] = useState<null | 'period' | 'category'>(null)
 
-  // Tự động tính ngày kết thúc cho chu kỳ tuần (7 ngày)[cite: 2]
+  // Tự động tính ngày kết thúc cho chu kỳ tuần (7 ngày)
   const autoEndDate = useMemo(() => {
     if (period !== 'weekly') return ''
     try {
@@ -85,7 +84,7 @@ export function LimitForm({
       period,
       category,
       startDate,
-      endDate: period === 'weekly' ? autoEndDate : undefined, // Lưu ngày kết thúc cho chu kỳ tuần[cite: 1]
+      endDate: period === 'weekly' ? autoEndDate : undefined, // Lưu ngày kết thúc cho chu kỳ tuần
       icon: 'cash-multiple',
     }
     onSubmit(limit)
@@ -123,7 +122,7 @@ export function LimitForm({
           />
         </View>
 
-        {/* Khung 2: Danh mục áp dụng[cite: 2, 7] */}
+        {/* Khung 2: Danh mục áp dụng */}
         <View style={styles.card}>
           <Text style={styles.label}>DANH MỤC ÁP DỤNG</Text>
           <View style={styles.categoryRow}>
@@ -137,7 +136,7 @@ export function LimitForm({
           </View>
         </View>
 
-        {/* Khung 3: Chu kỳ & Thời gian[cite: 2] */}
+        {/* Khung 3: Chu kỳ & Thời gian */}
         <View style={styles.card}>
           <Text style={styles.label}>CHU KỲ & THỜI GIAN</Text>
           <View style={styles.row}>
@@ -192,7 +191,7 @@ export function LimitForm({
         }}
       />
 
-      {/* Modal Chọn Danh mục[cite: 7] */}
+      {/* Modal Chọn Danh mục*/}
       <SelectionModal
         visible={openDropdown === 'category'}
         title='Chọn danh mục'

@@ -111,7 +111,7 @@ function answerHabits(data: AssistantData) {
   const largestExpenseText = largestExpense
     ? `Giao dịch chi lớn nhất là ${largestExpense.title} ${formatMoney(
         Math.abs(largestExpense.amountValue),
-      )} vao ngay ${largestExpense.dateLabel}.`
+      )} vào ngày ${largestExpense.dateLabel}.`
     : ''
 
   return [
@@ -193,7 +193,7 @@ function answerLargestExpense(data: AssistantData) {
 
   return `Khoản chi lớn nhất là ${data.largestExpense.title}: ${formatMoney(
     Math.abs(data.largestExpense.amountValue),
-  )} vao ngay ${data.largestExpense.dateLabel}.`
+  )} vào ngày ${data.largestExpense.dateLabel}.`
 }
 
 function answerTransfers(data: AssistantData) {

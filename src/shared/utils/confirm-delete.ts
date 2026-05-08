@@ -1,16 +1,17 @@
 import { Alert, Platform } from 'react-native'
 
-export function confirmDelete(message: string, onConfirm: () => void) {
+export function confirmDelete(title: string, message: string, onConfirm: () => void) {
   if (Platform.OS === 'web') {
     const confirmFn = typeof window !== 'undefined' ? window.confirm : undefined
-    if (!confirmFn || confirmFn(message)) {
+    const confirmMessage = title ? `${title}\n${message}` : message
+    if (!confirmFn || confirmFn(confirmMessage)) {
       onConfirm()
     }
     return
   }
 
   setTimeout(() => {
-    Alert.alert('Xóa hạn mức', message, [
+    Alert.alert(title, message, [
       { text: 'Hủy', style: 'cancel' },
       { text: 'Xóa', style: 'destructive', onPress: onConfirm },
     ])

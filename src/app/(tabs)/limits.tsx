@@ -6,10 +6,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { LimitCard } from '@/features/limit/presentation/limits-components'
 import { styles } from '@/features/limit/presentation/limits.styles'
-import { confirmDelete } from '@/features/limit/utils/limit-utils'
 import { useLimits, type LimitPeriod } from '@/shared/contexts/limit-context'
+import { confirmDelete } from '@/shared/utils/confirm-delete'
 
-// Cập nhật Filter chỉ còn 'all', 'weekly', 'monthly'
 type PeriodFilter = 'all' | LimitPeriod
 
 export default function LimitsScreen() {
@@ -94,7 +93,7 @@ export default function LimitsScreen() {
             onDelete={() => {
               const id = limit.id
               const title = limit.title
-              confirmDelete(`Bạn có chắc muốn xóa ${title}?`, () => deleteLimit(id))
+              confirmDelete('Xóa hạn mức', `Bạn có chắc muốn xóa ${title}?`, () => deleteLimit(id))
             }}
           />
         ))}

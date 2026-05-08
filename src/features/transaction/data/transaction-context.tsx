@@ -23,6 +23,7 @@ export type TransactionItem = {
     date: string
     tags: string[]
     note: string
+    aiSuggestion?: string
     footer: string
     walletType?: 'cash' | 'bank' | 'saving' | 'digital'
     rightContent?: 'icon' | 'bank-transfer'

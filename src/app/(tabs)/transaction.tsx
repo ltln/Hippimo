@@ -10,8 +10,9 @@ import {
 } from '@/features/transaction/data/transaction-context'
 import { DetailCard, FilterChip } from '@/features/transaction/presentation/transaction-components'
 import { styles } from '@/features/transaction/presentation/transaction.styles'
-import { confirmDelete, normalizeDateQuery } from '@/features/transaction/utils/transaction-utils'
+import { normalizeDateQuery } from '@/features/transaction/utils/transaction-utils'
 import { useWallets } from '@/features/wallet/data/wallet-context'
+import { confirmDelete } from '@/shared/utils/confirm-delete'
 
 type TypeFilter = 'all' | TransactionType
 
@@ -106,12 +107,12 @@ export default function TransactionScreen() {
             key={item.id}
             item={item}
             wallets={wallets}
-            // ✅ FIX: Capture id rõ ràng tránh stale closure, dùng setTimeout
-            // để tránh Alert bị nuốt bởi ScrollView gesture handler
             onDelete={() => {
               const id = item.id
               const title = item.title
-              confirmDelete(`Bạn có chắc muốn xóa ${title}?`, () => deleteTransaction(id))
+              confirmDelete('Xóa giao dịch', `Bạn có chắc muốn xóa ${title}?`, () =>
+                deleteTransaction(id),
+              )
             }}
           />
         ))}

@@ -130,7 +130,7 @@ export function DetailCard({
           <Text style={styles.tipBadgeText}>A</Text>
         </View>
         <Text style={styles.tipText}>
-          {(item.detail as any).aiSuggestion || 'Đang phân tích giao dịch...'}
+          {item.detail.aiSuggestion || 'Đang phân tích giao dịch...'}
         </Text>
       </View>
     </View>

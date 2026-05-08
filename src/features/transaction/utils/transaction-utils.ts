@@ -1,27 +1,8 @@
-import { Alert, Platform } from 'react-native'
-
 import type { TransactionItem } from '@/features/transaction/data/transaction-context'
 import type { WalletItem } from '@/features/wallet/data/wallet-context'
 
 export function normalizeDateQuery(value: string) {
   return value.trim().replaceAll('/', '-')
-}
-
-export function confirmDelete(message: string, onConfirm: () => void) {
-  if (Platform.OS === 'web') {
-    const confirmFn = typeof window !== 'undefined' ? window.confirm : undefined
-    if (!confirmFn || confirmFn(message)) {
-      onConfirm()
-    }
-    return
-  }
-
-  setTimeout(() => {
-    Alert.alert('Xóa giao dịch', message, [
-      { text: 'Hủy', style: 'cancel' },
-      { text: 'Xóa', style: 'destructive', onPress: onConfirm },
-    ])
-  }, 50)
 }
 
 export function getTransferWallets(item: TransactionItem, wallets: WalletItem[]) {
@@ -50,6 +31,6 @@ export function getExpenseWallet(item: TransactionItem, wallets: WalletItem[]) {
   return {
     wallet,
     name: wallet?.name ?? item.detail.tags[0] ?? '',
-    walletType: (item.detail as any).walletType as WalletItem['type'] | undefined,
+    walletType: item.detail.walletType,
   }
 }

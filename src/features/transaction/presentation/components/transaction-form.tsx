@@ -69,7 +69,6 @@ export function TransactionForm({
   const [transferFromWallet, setTransferFromWallet] = useState(initialValues.transferFromWallet)
   const [transferToWallet, setTransferToWallet] = useState(initialValues.transferToWallet)
   const [transactionDate, setTransactionDate] = useState(initialValues.transactionDate)
-  const [newCategory, setNewCategory] = useState('')
   const [openDropdown, setOpenDropdown] = useState<
     | null
     | 'expenseWallet'
@@ -398,12 +397,7 @@ export function TransactionForm({
         options={categoryOptions}
         onClose={() => setOpenDropdown(null)}
         onSelect={(value) => {
-          // Nếu chọn "Chuyển tiền ví" thì tự động switch sang mode transfer
-          if (value === '__transfer__') {
-            setMode('transfer')
-          } else {
-            setExpenseCategory(value)
-          }
+          setExpenseCategory(value)
           setOpenDropdown(null)
         }}
       />

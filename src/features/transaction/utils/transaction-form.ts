@@ -18,16 +18,13 @@ export type TransactionFormValues = {
   transactionDate: string
 }
 
-// ✅ FIX: Đồng bộ với walletTypeOptions trong transaction-form.tsx (chữ thường)
-export const categories = ['Tiền mặt', 'Ngân hàng', 'Tiết kiệm', 'Ví điện tử']
-
 export const defaultTransactionFormValues: TransactionFormValues = {
   mode: 'expense',
   amount: '400000',
   note: '',
   expenseWallet: 'cash-main',
   expenseCategory: 'Ăn uống',
-  expenseWalletType: 'Tiền mặt', // ✅ FIX: Đồng bộ chữ thường
+  expenseWalletType: 'Tiền mặt',
   transferFromWallet: 'cash-main',
   transferToWallet: 'momo-main',
   transactionDate: '29/04/2026',
@@ -113,7 +110,7 @@ export function buildTransaction({
         aiSuggestion: 'Giao dịch chuyển tiền nội bộ',
         footer: fromWalletName.toUpperCase(),
         rightContent: 'bank-transfer',
-      } as any,
+      },
     }
   }
 
@@ -136,10 +133,9 @@ export function buildTransaction({
       note: normalizedNote,
       aiSuggestion: `Có vẻ bạn đang chi cho ${expenseCategory.toLowerCase()}?`,
       footer: expenseCategory,
-      // ✅ FIX: Lưu walletType để getTransactionFormValues đọc lại đúng loại ví
       walletType: expenseWalletItem?.type ?? expenseWalletTypeFallback ?? 'cash',
       rightContent: 'icon',
-    } as any,
+    },
   }
 }
 
@@ -169,10 +165,7 @@ export function getTransactionFormValues(
     }
   }
 
-  // ✅ FIX: Đọc walletType từ detail (được lưu bởi buildTransaction),
-  // fallback sang tìm trong wallets theo walletId.
-  // Không dùng footer nữa vì footer = tên danh mục (VD: "Ăn uống"), không phải loại ví.
-  const savedWalletType = (transaction.detail as any).walletType
+  const savedWalletType = transaction.detail.walletType
   const walletFromId = wallets.find((w) => w.id === transaction.walletId)
   const resolvedWalletType = savedWalletType ?? walletFromId?.type ?? 'cash'
 
@@ -182,15 +175,14 @@ export function getTransactionFormValues(
     note: transaction.detail.note,
     expenseWallet: transaction.walletId ?? matchKnownWalletId(transaction.detail.tags[0], wallets),
     expenseCategory: transaction.title,
-    expenseWalletType: walletTypeToLabel(resolvedWalletType), // ✅ FIX: dùng helper map đúng
+    expenseWalletType: walletTypeToLabel(resolvedWalletType),
     transferFromWallet: defaultTransactionFormValues.transferFromWallet,
     transferToWallet: defaultTransactionFormValues.transferToWallet,
     transactionDate,
   }
 }
 
-// ✅ FIX: Map wallet type key → label khớp với walletTypeOptions trong form
-export function walletTypeToLabel(type: string): string {
+export function walletTypeToLabel(type: WalletItem['type']): string {
   switch (type) {
     case 'bank':
       return 'Ngân hàng'

@@ -7,8 +7,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTransactions } from '@/features/transaction/data/transaction-context'
 import { WalletCard } from '@/features/wallet/presentation/wallet-components'
 import { styles } from '@/features/wallet/presentation/wallet.styles'
-import { confirmDelete, transactionBelongsToWallet } from '@/features/wallet/utils/wallet-utils'
+import { transactionBelongsToWallet } from '@/features/wallet/utils/wallet-utils'
 import { useWallets } from '@/features/wallet/data/wallet-context'
+import { confirmDelete } from '@/shared/utils/confirm-delete'
 
 export default function WalletScreen() {
   const insets = useSafeAreaInsets()
@@ -78,7 +79,7 @@ export default function WalletScreen() {
             onDelete={() => {
               const id = wallet.id
               const name = wallet.name
-              confirmDelete(`Bạn có chắc muốn xóa ${name}?`, () => deleteWallet(id))
+              confirmDelete('Xóa ví', `Bạn có chắc muốn xóa ${name}?`, () => deleteWallet(id))
             }}
           />
         ))}

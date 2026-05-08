@@ -26,7 +26,7 @@ export function LimitCard({ limit, onDelete }: { limit: LimitItem; onDelete: () 
     <View style={styles.limitCard}>
       <View style={styles.limitHeader}>
         <View style={styles.limitIconBg}>
-          <MaterialCommunityIcons name={limit.icon as any} size={24} color='#FFFFFF' />
+          <MaterialCommunityIcons name={limit.icon} size={24} color='#FFFFFF' />
         </View>
         <View style={styles.limitTitleArea}>
           <Text style={styles.limitTitle}>{limit.title}</Text>
