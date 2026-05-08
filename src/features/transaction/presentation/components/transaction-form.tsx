@@ -125,7 +125,7 @@ export function TransactionForm({
         lastExpenseCategoryRef.current || defaultTransactionFormValues.expenseCategory,
       )
     }
-  }, [mode])
+  }, [mode, expenseCategory])
 
   useEffect(() => {
     const matchedWallet = wallets.find((wallet) => wallet.id === expenseWallet)
