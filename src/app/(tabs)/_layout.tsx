@@ -1,5 +1,8 @@
 import { Ionicons } from '@expo/vector-icons'
+import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs'
+import { PlatformPressable } from '@react-navigation/elements'
 import { Tabs } from 'expo-router'
+import { StyleSheet, View } from 'react-native'
 
 import { HapticTab } from '@/shared/components/haptic-tab'
 
@@ -16,6 +19,7 @@ export default function TabLayout() {
           backgroundColor: '#0A251B',
           elevation: 0,
           shadowOpacity: 0,
+          overflow: 'visible',
         },
         tabBarItemStyle: {
           paddingTop: 8,
@@ -44,17 +48,25 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name='qr'
+        options={{
+          title: 'QR',
+          tabBarLabel: () => null,
+          tabBarItemStyle: { paddingTop: 0, paddingBottom: 0 },
+          tabBarButton: (props: BottomTabBarButtonProps) => (
+            <PlatformPressable {...props} style={[props.style, styles.qrButton]}>
+              <View style={styles.qrButtonInner}>
+                <Ionicons name='qr-code-outline' size={28} color='#FFFFFF' />
+              </View>
+            </PlatformPressable>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name='limits'
         options={{
           title: 'Hạn mức',
           tabBarIcon: ({ color }) => <Ionicons name='stats-chart' size={22} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name='chat_ai'
-        options={{
-          title: 'Chat AI',
-          tabBarIcon: ({ color }) => <Ionicons name='bulb-outline' size={23} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -65,12 +77,42 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name='chat_ai'
+        options={{
+          href: null,
+          title: 'Chat AI',
+        }}
+      />
+      <Tabs.Screen
         name='settings'
         options={{
+          href: null,
           title: 'Cài đặt',
-          tabBarIcon: ({ color }) => <Ionicons name='settings-outline' size={22} color={color} />,
         }}
       />
     </Tabs>
   )
 }
+
+const styles = StyleSheet.create({
+  qrButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -26,
+  },
+  qrButtonInner: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#16A34A',
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    shadowColor: '#16A34A',
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+})

@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react'
 import type { StyleProp, ViewStyle } from 'react-native'
-import { Text, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Animated, Text, View } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
 import { rainbowColors, type ChatMessage } from '../chat-ai.constants'
@@ -14,13 +15,60 @@ export function RainbowFrame({
   style?: StyleProp<ViewStyle>
   innerStyle?: StyleProp<ViewStyle>
 }>) {
+  const [frameWidth, setFrameWidth] = useState(0)
+  const shineProgress = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    if (!frameWidth) {
+      return
+    }
+
+    shineProgress.setValue(0)
+
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shineProgress, {
+          toValue: 1,
+          duration: 2600,
+          useNativeDriver: true,
+        }),
+        Animated.delay(600),
+      ]),
+    )
+
+    animation.start()
+
+    return () => {
+      animation.stop()
+    }
+  }, [frameWidth, shineProgress])
+
+  const translateX = shineProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-frameWidth - 60, frameWidth + 60],
+  })
+
   return (
-    <View style={[styles.rainbowFrame, style]}>
+    <View
+      style={[styles.rainbowFrame, style]}
+      onLayout={(event) => setFrameWidth(event.nativeEvent.layout.width)}
+    >
       <View pointerEvents='none' style={styles.rainbowLayer}>
         {rainbowColors.map((color) => (
           <View key={color} style={[styles.rainbowBand, { backgroundColor: color }]} />
         ))}
       </View>
+      {frameWidth ? (
+        <Animated.View
+          pointerEvents='none'
+          style={[
+            styles.shineStreak,
+            {
+              transform: [{ translateX }, { rotate: '-20deg' }],
+            },
+          ]}
+        />
+      ) : null}
       <View style={[styles.rainbowInner, innerStyle]}>{children}</View>
     </View>
   )

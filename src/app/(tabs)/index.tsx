@@ -37,13 +37,22 @@ export default function DashboardScreen() {
           <Ionicons name='notifications-outline' size={22} color='#12392C' />
         </Pressable>
         <Text style={styles.headerTitle}>T4, 01/04</Text>
-        <Pressable
-          style={styles.headerButton}
-          accessibilityLabel='Cài đặt'
-          onPress={() => router.push('/(tabs)/settings')}
-        >
-          <Ionicons name='settings-outline' size={22} color='#12392C' />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            style={styles.headerButton}
+            accessibilityLabel='Chat AI'
+            onPress={() => router.push('/(tabs)/chat_ai')}
+          >
+            <Ionicons name='sparkles-outline' size={22} color='#12392C' />
+          </Pressable>
+          <Pressable
+            style={styles.headerButton}
+            accessibilityLabel='Cài đặt'
+            onPress={() => router.push('/(tabs)/settings')}
+          >
+            <Ionicons name='settings-outline' size={22} color='#12392C' />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView
@@ -217,6 +226,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingBottom: 18,
     backgroundColor: '#F7FBF5',
+    position: 'relative',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   headerButton: {
     width: 38,
@@ -230,6 +245,11 @@ const styles = StyleSheet.create({
     color: '#12392C',
     fontSize: 19,
     fontWeight: '800',
+    left: 0,
+    pointerEvents: 'none',
+    position: 'absolute',
+    right: 0,
+    textAlign: 'center',
   },
   content: {
     paddingHorizontal: 22,
