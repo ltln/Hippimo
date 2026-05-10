@@ -156,6 +156,14 @@ export const styles = StyleSheet.create({
   rainbowBand: {
     flex: 1,
   },
+  shineStreak: {
+    position: 'absolute',
+    top: -60,
+    bottom: -60,
+    width: 28,
+    opacity: 0.55,
+    backgroundColor: '#FFFFFF',
+  },
   rainbowInner: {
     position: 'relative',
   },
