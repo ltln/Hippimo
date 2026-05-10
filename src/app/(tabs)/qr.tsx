@@ -38,7 +38,6 @@ export default function QrScreen() {
       <CameraView style={StyleSheet.absoluteFillObject} facing='back' />
 
       <SafeAreaView style={styles.overlay} edges={['top', 'left', 'right']}>
-        <Text style={styles.topCenterText}>Quét hóa đơn</Text>
         <View style={styles.topRow}>
           <Pressable style={styles.topIconButton} onPress={() => router.replace('/(tabs)')}>
             <Ionicons name='home-outline' size={18} color='#FFFFFF' />
@@ -46,6 +45,9 @@ export default function QrScreen() {
         </View>
 
         <View style={styles.scanArea}>
+          <View style={styles.scanTitlePill}>
+            <Text style={styles.scanTitle}>Quét hóa đơn</Text>
+          </View>
           <ScanCorner position='topLeft' />
           <ScanCorner position='topRight' />
           <ScanCorner position='bottomLeft' />
@@ -55,8 +57,8 @@ export default function QrScreen() {
         <View style={styles.actionsColumn}>
           <Pressable style={styles.actionButton}>
             <Ionicons name='image-outline' size={20} color='#1B1B1B' />
-            <Text style={styles.actionLabel}>Chon anh</Text>
           </Pressable>
+          <Text style={styles.actionLabel}>Chọn ảnh</Text>
         </View>
       </SafeAreaView>
     </View>
@@ -140,13 +142,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  topCenterText: {
-    textAlign: 'center',
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 10,
-  },
   topIconButton: {
     width: 36,
     height: 36,
@@ -159,6 +154,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  scanTitlePill: {
+    position: 'absolute',
+    top: 18,
+    alignSelf: 'center',
+    backgroundColor: '#16A34A',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    zIndex: 10,
+  },
+  scanTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   corner: {
     position: 'absolute',
@@ -187,17 +197,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    alignSelf: 'flex-end',
   },
   actionLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#1B1B1B',
     fontWeight: '700',
+    textAlign: 'center',
+    marginTop: -2,
   },
 })
