@@ -38,6 +38,7 @@ export default function QrScreen() {
       <CameraView style={StyleSheet.absoluteFillObject} facing='back' />
 
       <SafeAreaView style={styles.overlay} edges={['top', 'left', 'right']}>
+        <Text style={styles.topCenterText}>Quét hóa đơn</Text>
         <View style={styles.topRow}>
           <Pressable style={styles.topIconButton} onPress={() => router.replace('/(tabs)')}>
             <Ionicons name='home-outline' size={18} color='#FFFFFF' />
@@ -138,6 +139,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  topCenterText: {
+    textAlign: 'center',
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 10,
   },
   topIconButton: {
     width: 36,
