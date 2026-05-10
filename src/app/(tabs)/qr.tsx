@@ -3,6 +3,7 @@ import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-n
 import { Ionicons } from '@expo/vector-icons'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { router } from 'expo-router'
 
 export default function QrScreen() {
   const [permission, requestPermission] = useCameraPermissions()
@@ -38,18 +39,9 @@ export default function QrScreen() {
 
       <SafeAreaView style={styles.overlay} edges={['top', 'left', 'right']}>
         <View style={styles.topRow}>
-          <View style={styles.topLeft}>
-            <Ionicons name='arrow-back' size={20} color='#FFFFFF' />
-            <Text style={styles.topTitle}>Quet ma</Text>
-          </View>
-          <View style={styles.topRight}>
-            <Pressable style={styles.topIconButton}>
-              <Ionicons name='apps-outline' size={18} color='#FFFFFF' />
-            </Pressable>
-            <Pressable style={styles.topIconButton}>
-              <Ionicons name='home-outline' size={18} color='#FFFFFF' />
-            </Pressable>
-          </View>
+          <Pressable style={styles.topIconButton} onPress={() => router.replace('/(tabs)')}>
+            <Ionicons name='home-outline' size={18} color='#FFFFFF' />
+          </Pressable>
         </View>
 
         <View style={styles.scanArea}>
@@ -57,20 +49,12 @@ export default function QrScreen() {
           <ScanCorner position='topRight' />
           <ScanCorner position='bottomLeft' />
           <ScanCorner position='bottomRight' />
-          <View style={styles.scanPill}>
-            <Text style={styles.scanPillText}>Quet moi ma QR ngan hang</Text>
-            <Ionicons name='information-circle-outline' size={16} color='#FFFFFF' />
-          </View>
         </View>
 
         <View style={styles.actionsColumn}>
           <Pressable style={styles.actionButton}>
-            <Ionicons name='sparkles-outline' size={20} color='#1B1B1B' />
-            <Text style={styles.actionLabel}>Nang cao</Text>
-          </Pressable>
-          <Pressable style={styles.actionButton}>
             <Ionicons name='image-outline' size={20} color='#1B1B1B' />
-            <Text style={styles.actionLabel}>Chon anh QR</Text>
+            <Text style={styles.actionLabel}>Chon anh</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -155,24 +139,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  topLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 18,
-  },
-  topTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  topRight: {
-    flexDirection: 'row',
-    gap: 10,
-  },
   topIconButton: {
     width: 36,
     height: 36,
@@ -185,21 +151,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  scanPill: {
-    marginTop: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#16A34A',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 22,
-  },
-  scanPillText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 13,
   },
   corner: {
     position: 'absolute',

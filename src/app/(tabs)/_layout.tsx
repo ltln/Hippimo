@@ -56,7 +56,7 @@ export default function TabLayout() {
           tabBarButton: (props: BottomTabBarButtonProps) => (
             <PlatformPressable {...props} style={[props.style, styles.qrButton]}>
               <View style={styles.qrButtonInner}>
-                <Ionicons name='qr-code-outline' size={28} color='#FFFFFF' />
+                <Ionicons name='camera-outline' size={28} color='#FFFFFF' />
               </View>
             </PlatformPressable>
           ),
