@@ -1,7 +1,15 @@
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useTransactions } from '@/features/transaction/data/transaction-context'
@@ -13,7 +21,7 @@ import { confirmDelete } from '@/shared/utils/confirm-delete'
 
 export default function WalletScreen() {
   const insets = useSafeAreaInsets()
-  const { wallets, deleteWallet } = useWallets()
+  const { wallets, deleteWallet, error, isLoading, refreshWallets } = useWallets()
   const { transactions } = useTransactions()
   const [showSearch, setShowSearch] = useState(false)
   const [query, setQuery] = useState('')
@@ -69,6 +77,22 @@ export default function WalletScreen() {
           </View>
         ) : null}
 
+        {isLoading ? (
+          <View style={styles.statusCard}>
+            <ActivityIndicator color='#0A3A2A' />
+            <Text style={styles.statusText}>Đang tải ví...</Text>
+          </View>
+        ) : null}
+
+        {error ? (
+          <View style={styles.statusCard}>
+            <Text style={styles.statusText}>Không thể tải ví: {error}</Text>
+            <Pressable style={styles.retryButton} onPress={refreshWallets}>
+              <Text style={styles.retryButtonText}>Thử lại</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {filteredWallets.map((wallet) => (
           <WalletCard
             key={wallet.id}
@@ -79,7 +103,12 @@ export default function WalletScreen() {
             onDelete={() => {
               const id = wallet.id
               const name = wallet.name
-              confirmDelete('Xóa ví', `Bạn có chắc muốn xóa ${name}?`, () => deleteWallet(id))
+              confirmDelete('Xóa ví', `Bạn có chắc muốn xóa ${name}?`, async () => {
+                const success = await deleteWallet(id)
+                if (!success) {
+                  Alert.alert('Lỗi', 'Không thể xóa ví. Vui lòng thử lại.')
+                }
+              })
             }}
           />
         ))}

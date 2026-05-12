@@ -13,10 +13,10 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import type { TransactionItem } from '@/features/transaction/data/transaction-context'
+import type { CreateTransactionDto } from '@/features/transaction/data/transaction-api'
+import { useTransactions } from '@/features/transaction/data/transaction-context'
 import { useWallets } from '@/features/wallet/data/wallet-context'
 import {
-  buildTransaction,
   defaultTransactionFormValues,
   formatCurrencyInput,
   normalizeDate,
@@ -30,7 +30,7 @@ type SelectionOption = {
   label: string
 }
 
-const categoryOptions: SelectionOption[] = [
+const fallbackCategoryOptions: SelectionOption[] = [
   { value: 'Ăn uống', label: 'Ăn uống' },
   { value: 'Di chuyển', label: 'Di chuyển' },
   { value: 'Nhà cửa', label: 'Nhà cửa' },
@@ -42,19 +42,18 @@ type TransactionFormProps = {
   title: string
   submitLabel: string
   initialValues?: TransactionFormValues
-  transactionId?: string
-  onSubmit: (transaction: TransactionItem) => void
+  onSubmit: (payload: CreateTransactionDto) => void
 }
 
 export function TransactionForm({
   title,
   submitLabel,
   initialValues = defaultTransactionFormValues,
-  transactionId,
   onSubmit,
 }: TransactionFormProps) {
   const insets = useSafeAreaInsets()
   const { wallets } = useWallets()
+  const { categoryOptions } = useTransactions()
   const amountInputRef = useRef<TextInput>(null)
   const [mode, setMode] = useState<CreateMode>(initialValues.mode)
   const [amount, setAmount] = useState(initialValues.amount)
@@ -66,6 +65,7 @@ export function TransactionForm({
     (initialValues as any)?.expenseWalletType || 'Tiền mặt',
   )
   const [expenseCategory, setExpenseCategory] = useState(initialValues.expenseCategory)
+  const [expenseCategoryId, setExpenseCategoryId] = useState<string | null>(null)
   const [transferFromWallet, setTransferFromWallet] = useState(initialValues.transferFromWallet)
   const [transferToWallet, setTransferToWallet] = useState(initialValues.transferToWallet)
   const [transactionDate, setTransactionDate] = useState(initialValues.transactionDate)
@@ -97,6 +97,21 @@ export function TransactionForm({
     ],
     [],
   )
+  const categorySelectionOptions = useMemo<SelectionOption[]>(
+    () =>
+      categoryOptions.length > 0
+        ? categoryOptions.map((option) => ({ value: option.value, label: option.label }))
+        : fallbackCategoryOptions,
+    [categoryOptions],
+  )
+  const categoryIdByLabel = useMemo(() => {
+    const entries: Array<readonly [string, string]> = categoryOptions.map((option) => [
+      option.label.trim().toLocaleLowerCase('vi-VN'),
+      option.value,
+    ])
+
+    return new Map<string, string>(entries)
+  }, [categoryOptions])
 
   useEffect(() => {
     setMode(initialValues.mode)
@@ -105,6 +120,7 @@ export function TransactionForm({
     setExpenseWallet(initialValues.expenseWallet)
     setExpenseWalletType((initialValues as any)?.expenseWalletType || 'Tiền mặt')
     setExpenseCategory(initialValues.expenseCategory)
+    setExpenseCategoryId(null)
     lastExpenseCategoryRef.current =
       initialValues.mode === 'transfer'
         ? defaultTransactionFormValues.expenseCategory
@@ -113,6 +129,19 @@ export function TransactionForm({
     setTransferToWallet(initialValues.transferToWallet)
     setTransactionDate(initialValues.transactionDate)
   }, [initialValues])
+
+  useEffect(() => {
+    if (mode !== 'expense' || categoryOptions.length === 0) {
+      return
+    }
+
+    const normalized = expenseCategory.trim().toLocaleLowerCase('vi-VN')
+    const matchedId = categoryIdByLabel.get(normalized) ?? null
+
+    if (matchedId && matchedId !== expenseCategoryId) {
+      setExpenseCategoryId(matchedId)
+    }
+  }, [categoryIdByLabel, categoryOptions.length, expenseCategory, expenseCategoryId, mode])
 
   useEffect(() => {
     if (mode === 'transfer') {
@@ -168,6 +197,30 @@ export function TransactionForm({
   }
 
   const handleSave = () => {
+    if (mode === 'expense' && categoryOptions.length === 0) {
+      Alert.alert('Chưa có danh mục', 'Bạn hãy đồng bộ danh mục trước khi tạo giao dịch.')
+      return
+    }
+
+    if (wallets.length === 0) {
+      Alert.alert('Chưa có ví', 'Bạn hãy tạo ví trước khi ghi nhận giao dịch.')
+      return
+    }
+
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    const walletIdToCheck = mode === 'transfer' ? transferFromWallet : expenseWallet
+    const toWalletIdToCheck = mode === 'transfer' ? transferToWallet : undefined
+
+    if (!uuidPattern.test(walletIdToCheck)) {
+      Alert.alert('Ví chưa hợp lệ', 'Hãy chọn ví từ backend trước khi lưu giao dịch.')
+      return
+    }
+
+    if (toWalletIdToCheck && !uuidPattern.test(toWalletIdToCheck)) {
+      Alert.alert('Ví chưa hợp lệ', 'Hãy chọn ví nhận từ backend trước khi lưu giao dịch.')
+      return
+    }
+
     const numericAmount = Number.parseInt(amount || '0', 10)
 
     if (!numericAmount) {
@@ -182,21 +235,30 @@ export function TransactionForm({
       return
     }
 
-    const transaction = buildTransaction({
-      id: transactionId,
-      amountValue: numericAmount,
-      date: normalizedDate,
-      mode,
-      note: noteRef.current,
-      expenseWallet,
-      expenseWalletTypeLabel: expenseWalletType,
-      expenseCategory,
-      transferFromWallet,
-      transferToWallet,
-      wallets,
-    })
+    const resolvedCategoryId: string | null =
+      expenseCategoryId ??
+      categoryIdByLabel.get(expenseCategory.trim().toLocaleLowerCase('vi-VN')) ??
+      null
 
-    onSubmit(transaction)
+    if (mode === 'expense' && !resolvedCategoryId) {
+      Alert.alert('Thiếu danh mục', 'Bạn hãy chọn danh mục hợp lệ trước khi lưu giao dịch.')
+      return
+    }
+
+    const payload: CreateTransactionDto = {
+      walletId: mode === 'transfer' ? transferFromWallet : expenseWallet,
+      toWalletId: mode === 'transfer' ? transferToWallet : undefined,
+      amount: numericAmount,
+      type: mode === 'transfer' ? 'TRANSFER' : 'EXPENSE',
+      transactionDate: normalizedDate.iso,
+      notes: noteRef.current?.trim() ? noteRef.current.trim() : undefined,
+    }
+
+    if (mode === 'expense' && resolvedCategoryId) {
+      payload.categoryId = resolvedCategoryId
+    }
+
+    onSubmit(payload)
   }
 
   return (
@@ -309,7 +371,10 @@ export function TransactionForm({
           <View style={styles.categoryContainer}>
             <TextInput
               value={expenseCategory}
-              onChangeText={setExpenseCategory}
+              onChangeText={(value) => {
+                setExpenseCategory(value)
+                setExpenseCategoryId(null)
+              }}
               placeholder='Nhập tên danh mục'
               placeholderTextColor='#B8CEC3'
               style={styles.categoryInput}
@@ -394,10 +459,12 @@ export function TransactionForm({
       <SelectionModal
         visible={openDropdown === 'expenseCategory'}
         title='Chọn danh mục'
-        options={categoryOptions}
+        options={categorySelectionOptions}
         onClose={() => setOpenDropdown(null)}
         onSelect={(value) => {
-          setExpenseCategory(value)
+          const selected = categorySelectionOptions.find((option) => option.value === value)
+          setExpenseCategory(selected?.label ?? value)
+          setExpenseCategoryId(value)
           setOpenDropdown(null)
         }}
       />

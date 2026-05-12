@@ -266,6 +266,24 @@ export function useAuth() {
   return context
 }
 
+export type AuthAccessToken = {
+  accessToken: string
+  tokenType?: string
+} | null
+
+export function useAuthAccessToken(): AuthAccessToken {
+  const { authResponse } = useAuth()
+
+  if (!authResponse?.tokens?.accessToken) {
+    return null
+  }
+
+  return {
+    accessToken: authResponse.tokens.accessToken,
+    tokenType: authResponse.tokens.tokenType,
+  }
+}
+
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,

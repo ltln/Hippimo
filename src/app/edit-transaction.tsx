@@ -35,9 +35,13 @@ export default function EditTransactionScreen() {
       title='CHỈNH SỬA GIAO DỊCH'
       submitLabel='CẬP NHẬT GIAO DỊCH'
       initialValues={getTransactionFormValues(transaction, wallets)}
-      transactionId={transaction.id}
-      onSubmit={(updatedTransaction) => {
-        updateTransaction(updatedTransaction)
+      onSubmit={async (payload) => {
+        const success = await updateTransaction(transaction.id, payload)
+        if (!success) {
+          Alert.alert('Lỗi', 'Không thể cập nhật giao dịch. Vui lòng thử lại.')
+          return
+        }
+
         Alert.alert('Đã cập nhật', 'Thông tin giao dịch đã được cập nhật.', [
           { text: 'OK', onPress: () => router.back() },
         ])

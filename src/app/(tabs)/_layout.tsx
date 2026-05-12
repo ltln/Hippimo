@@ -1,8 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
-import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs'
-import { PlatformPressable } from '@react-navigation/elements'
 import { Tabs } from 'expo-router'
-import { StyleSheet, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 
 import { HapticTab } from '@/shared/components/haptic-tab'
 
@@ -53,13 +51,25 @@ export default function TabLayout() {
           title: 'QR',
           tabBarLabel: () => null,
           tabBarItemStyle: { paddingTop: 0, paddingBottom: 0 },
-          tabBarButton: (props: BottomTabBarButtonProps) => (
-            <PlatformPressable {...props} style={[props.style, styles.qrButton]}>
-              <View style={styles.qrButtonInner}>
-                <Ionicons name='camera-outline' size={28} color='#FFFFFF' />
-              </View>
-            </PlatformPressable>
-          ),
+          tabBarButton: (props) => {
+            const { ref, ...restProps } = props
+
+            return (
+              <Pressable
+                {...restProps}
+                onPress={props.onPress}
+                style={({ pressed }) => [
+                  props.style as any,
+                  styles.qrButton,
+                  pressed ? styles.qrButtonPressed : null,
+                ]}
+              >
+                <View style={styles.qrButtonInner}>
+                  <Ionicons name='qr-code-outline' size={28} color='#FFFFFF' />
+                </View>
+              </Pressable>
+            )
+          },
         }}
       />
       <Tabs.Screen
@@ -100,16 +110,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: -26,
   },
+  qrButtonPressed: {
+    transform: [{ scale: 0.96 }],
+  },
   qrButtonInner: {
     width: 62,
     height: 62,
     borderRadius: 31,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#16A34A',
+    backgroundColor: '#E84C9B',
     borderWidth: 4,
     borderColor: '#FFFFFF',
-    shadowColor: '#16A34A',
+    shadowColor: '#E84C9B',
     shadowOpacity: 0.35,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },

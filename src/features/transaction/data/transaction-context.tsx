@@ -1,6 +1,19 @@
 import type { ComponentProps, PropsWithChildren } from 'react'
-import { createContext, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+
+import { fetchCategories, type CategoryRecord } from '@/features/category/data/category-api'
+import { useAuthAccessToken } from '@/features/auth/data/auth-context'
+import {
+  createTransaction as createTransactionApi,
+  deleteTransaction as deleteTransactionApi,
+  fetchTransactions,
+  updateTransaction as updateTransactionApi,
+  type CreateTransactionDto,
+  type TransactionRecord,
+  type UpdateTransactionDto,
+} from '@/features/transaction/data/transaction-api'
+import { useWallets } from '@/features/wallet/data/wallet-context'
 
 export type TransactionType = 'expense' | 'transfer'
 
@@ -32,9 +45,13 @@ export type TransactionItem = {
 
 type TransactionContextValue = {
   transactions: TransactionItem[]
-  addTransaction: (transaction: TransactionItem) => void
-  updateTransaction: (transaction: TransactionItem) => void
-  deleteTransaction: (id: string) => void
+  categoryOptions: { value: string; label: string; type: CategoryRecord['type'] }[]
+  isLoading: boolean
+  error: string | null
+  refreshTransactions: () => Promise<void>
+  addTransaction: (payload: CreateTransactionDto) => Promise<boolean>
+  updateTransaction: (id: string, payload: UpdateTransactionDto) => Promise<boolean>
+  deleteTransaction: (id: string) => Promise<boolean>
 }
 
 const initialTransactions: TransactionItem[] = [
@@ -196,26 +213,254 @@ const initialTransactions: TransactionItem[] = [
 
 const TransactionContext = createContext<TransactionContextValue | null>(null)
 
+const formatCurrency = (value: number) => `${new Intl.NumberFormat('vi-VN').format(value)} VND`
+
+const formatDateLabel = (value: string) => {
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return value
+  }
+
+  const day = String(parsed.getDate()).padStart(2, '0')
+  const month = String(parsed.getMonth() + 1).padStart(2, '0')
+  return `${day}-${month}-${parsed.getFullYear()}`
+}
+
+const mapRecordToItem = (
+  record: TransactionRecord,
+  wallets: ReturnType<typeof useWallets>['wallets'],
+  categoryNameById: Map<string, string>,
+): TransactionItem => {
+  const wallet = wallets.find((item) => item.id === record.walletId)
+  const toWallet = wallets.find((item) => item.id === record.toWalletId)
+  const isTransfer = record.type === 'TRANSFER'
+  const isExpense = record.type === 'EXPENSE'
+  const amountValue = isExpense ? -Number(record.amount) : Number(record.amount)
+  const amountDisplay = isExpense
+    ? `-${formatCurrency(Number(record.amount))}`
+    : formatCurrency(Number(record.amount))
+  const dateLabel = formatDateLabel(record.transactionDate)
+  const fallbackTitle = isTransfer ? 'Chuyển tiền' : isExpense ? 'Chi tiêu' : 'Thu nhập'
+  const categoryName = record.categoryId ? categoryNameById.get(record.categoryId) : undefined
+  const title = categoryName ?? fallbackTitle
+  const walletName = wallet?.name ?? 'Ví'
+
+  if (isTransfer) {
+    const toWalletName = toWallet?.name ?? 'Ví nhận'
+
+    return {
+      id: record.transactionId,
+      title,
+      amount: amountDisplay,
+      amountValue,
+      dateLabel,
+      dateISO: record.transactionDate,
+      icon: 'swap-horizontal',
+      iconBackground: '#8A7DFF',
+      type: 'transfer',
+      transferFromWalletId: record.walletId ?? undefined,
+      transferToWalletId: record.toWalletId ?? undefined,
+      detail: {
+        amountDisplay,
+        amountColor: '#79F4A6',
+        date: dateLabel,
+        tags: [`${walletName} -> ${toWalletName}`],
+        note: record.notes ?? '',
+        aiSuggestion: undefined,
+        footer: walletName.toUpperCase(),
+        rightContent: 'bank-transfer',
+      },
+    }
+  }
+
+  return {
+    id: record.transactionId,
+    title,
+    amount: amountDisplay,
+    amountValue,
+    dateLabel,
+    dateISO: record.transactionDate,
+    icon: isExpense ? 'shopping-outline' : 'cash',
+    iconBackground: isExpense ? '#F0C65A' : '#79F4A6',
+    type: 'expense',
+    walletId: record.walletId ?? undefined,
+    detail: {
+      amountDisplay,
+      amountColor: isExpense ? '#FFDFD7' : '#79F4A6',
+      date: dateLabel,
+      tags: [walletName],
+      note: record.notes ?? '',
+      aiSuggestion: record.aiSuggestedCategoryId ? 'Có gợi ý AI cho danh mục này.' : undefined,
+      footer: title,
+      walletType: wallet?.type,
+      rightContent: 'icon',
+    },
+  }
+}
+
 export function TransactionProvider({ children }: PropsWithChildren) {
   const [transactions, setTransactions] = useState<TransactionItem[]>(initialTransactions)
+  const [categories, setCategories] = useState<CategoryRecord[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const authToken = useAuthAccessToken()
+  const { wallets } = useWallets()
 
-  const addTransaction = (transaction: TransactionItem) => {
-    setTransactions((current) => [transaction, ...current])
-  }
+  const categoryOptions = useMemo(
+    () =>
+      categories
+        .filter((category) => category.status !== 'INACTIVE')
+        .map((category) => ({
+          value: category.categoryId,
+          label: category.name,
+          type: category.type,
+        })),
+    [categories],
+  )
 
-  const updateTransaction = (transaction: TransactionItem) => {
-    setTransactions((current) =>
-      current.map((item) => (item.id === transaction.id ? transaction : item)),
-    )
-  }
+  const categoryNameById = useMemo(() => {
+    const entries = categories.map((category) => [category.categoryId, category.name] as const)
+    return new Map(entries)
+  }, [categories])
 
-  const deleteTransaction = (id: string) => {
-    setTransactions((current) => current.filter((transaction) => transaction.id !== id))
-  }
+  const authConfig = useMemo(() => {
+    if (!authToken?.accessToken) {
+      return null
+    }
+
+    return authToken
+  }, [authToken])
+
+  const refreshCategories = useCallback(async () => {
+    if (!authConfig) {
+      setCategories([])
+      return
+    }
+
+    try {
+      const response = await fetchCategories(authConfig)
+      setCategories(response)
+    } catch (caughtError) {
+      console.error('Fetch categories failed', caughtError)
+    }
+  }, [authConfig])
+
+  const refreshTransactions = useCallback(async () => {
+    if (!authConfig) {
+      setTransactions([])
+      setError(null)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const records = await fetchTransactions(authConfig)
+      setTransactions(records.map((record) => mapRecordToItem(record, wallets, categoryNameById)))
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : 'Fetch failed.'
+      console.error('Fetch transactions failed', caughtError)
+      setError(message)
+      setTransactions(initialTransactions)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [authConfig, wallets, categoryNameById])
+
+  useEffect(() => {
+    void refreshTransactions()
+  }, [refreshTransactions])
+
+  useEffect(() => {
+    void refreshCategories()
+  }, [refreshCategories])
+
+  const addTransaction = useCallback(
+    async (payload: CreateTransactionDto) => {
+      if (!authConfig) {
+        setError('Missing authentication. Please sign in again.')
+        return false
+      }
+
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const record = await createTransactionApi(payload, authConfig)
+        const nextItem = mapRecordToItem(record, wallets, categoryNameById)
+        setTransactions((current) => [nextItem, ...current])
+        return true
+      } catch (caughtError) {
+        const message = caughtError instanceof Error ? caughtError.message : 'Create failed.'
+        console.error('Create transaction failed', caughtError)
+        setError(message)
+        return false
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [authConfig, wallets, categoryNameById],
+  )
+
+  const updateTransaction = useCallback(
+    async (id: string, payload: UpdateTransactionDto) => {
+      if (!authConfig) {
+        setError('Missing authentication. Please sign in again.')
+        return false
+      }
+
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const record = await updateTransactionApi(id, payload, authConfig)
+        const nextItem = mapRecordToItem(record, wallets, categoryNameById)
+        setTransactions((current) => current.map((item) => (item.id === id ? nextItem : item)))
+        return true
+      } catch (caughtError) {
+        const message = caughtError instanceof Error ? caughtError.message : 'Update failed.'
+        console.error('Update transaction failed', caughtError)
+        setError(message)
+        return false
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [authConfig, wallets, categoryNameById],
+  )
+
+  const deleteTransaction = useCallback(
+    async (id: string) => {
+      setTransactions((current) => current.filter((transaction) => transaction.id !== id))
+
+      if (!authConfig) {
+        return false
+      }
+
+      try {
+        await deleteTransactionApi(id, authConfig)
+        return true
+      } catch (caughtError) {
+        console.error('Delete transaction failed', caughtError)
+        return false
+      }
+    },
+    [authConfig],
+  )
 
   return (
     <TransactionContext.Provider
-      value={{ transactions, addTransaction, updateTransaction, deleteTransaction }}
+      value={{
+        transactions,
+        categoryOptions,
+        isLoading,
+        error,
+        refreshTransactions,
+        addTransaction,
+        updateTransaction,
+        deleteTransaction,
+      }}
     >
       {children}
     </TransactionContext.Provider>

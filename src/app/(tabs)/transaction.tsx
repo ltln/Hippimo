@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import {
@@ -24,7 +24,8 @@ const typeOptions: { key: TypeFilter; label: string }[] = [
 
 export default function TransactionScreen() {
   const insets = useSafeAreaInsets()
-  const { transactions, deleteTransaction } = useTransactions()
+  const { transactions, deleteTransaction, error, isLoading, refreshTransactions } =
+    useTransactions()
   const { wallets } = useWallets()
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [dateQuery, setDateQuery] = useState('')
@@ -99,6 +100,22 @@ export default function TransactionScreen() {
                 style={styles.searchInput}
               />
             </View>
+          </View>
+        ) : null}
+
+        {isLoading ? (
+          <View style={styles.statusCard}>
+            <ActivityIndicator color='#0A3A2A' />
+            <Text style={styles.statusText}>Đang tải giao dịch...</Text>
+          </View>
+        ) : null}
+
+        {error ? (
+          <View style={styles.statusCard}>
+            <Text style={styles.statusText}>Không thể tải giao dịch: {error}</Text>
+            <Pressable style={styles.retryButton} onPress={refreshTransactions}>
+              <Text style={styles.retryButtonText}>Thử lại</Text>
+            </Pressable>
           </View>
         ) : null}
 

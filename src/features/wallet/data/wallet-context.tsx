@@ -1,6 +1,19 @@
 import type { ComponentProps, PropsWithChildren } from 'react'
-import { createContext, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+
+import { useAuthAccessToken } from '@/features/auth/data/auth-context'
+import {
+  addMoneyToWallet as addMoneyToWalletApi,
+  createWallet as createWalletApi,
+  deleteWallet as deleteWalletApi,
+  fetchWallets,
+  updateWallet as updateWalletApi,
+  type CreateWalletDto,
+  type UpdateWalletDto,
+  type WalletRecord,
+  type WalletTypeApi,
+} from '@/features/wallet/data/wallet-api'
 
 export type WalletType = 'cash' | 'bank' | 'saving' | 'digital'
 
@@ -32,29 +45,185 @@ const initialWallets: WalletItem[] = [
 
 type WalletContextValue = {
   wallets: WalletItem[]
-  addWallet: (wallet: WalletItem) => void
-  updateWallet: (wallet: WalletItem) => void
-  deleteWallet: (id: string) => void
+  isLoading: boolean
+  error: string | null
+  refreshWallets: () => Promise<void>
+  addWallet: (payload: CreateWalletDto) => Promise<boolean>
+  updateWallet: (id: string, payload: UpdateWalletDto, nextBalance?: number) => Promise<boolean>
+  deleteWallet: (id: string) => Promise<boolean>
   getWalletById: (id: string | undefined) => WalletItem | undefined
   getWalletByName: (name: string | undefined) => WalletItem | undefined
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null)
 
+const mapWalletType = (type: WalletTypeApi): WalletType => {
+  switch (type) {
+    case 'BANK_ACCOUNT':
+      return 'bank'
+    case 'SAVINGS':
+      return 'saving'
+    case 'E_WALLET':
+      return 'digital'
+    case 'CASH':
+    case 'CREDIT_CARD':
+    case 'OTHER':
+    default:
+      return 'cash'
+  }
+}
+
+const mapWalletTypeToApi = (type: WalletType): WalletTypeApi => {
+  switch (type) {
+    case 'bank':
+      return 'BANK_ACCOUNT'
+    case 'saving':
+      return 'SAVINGS'
+    case 'digital':
+      return 'E_WALLET'
+    case 'cash':
+    default:
+      return 'CASH'
+  }
+}
+
+const mapRecordToWallet = (record: WalletRecord): WalletItem => ({
+  id: record.walletId,
+  name: record.name,
+  type: mapWalletType(record.type),
+  balance: Number(record.balance),
+  spent: 0,
+})
+
 export function WalletProvider({ children }: PropsWithChildren) {
   const [wallets, setWallets] = useState(initialWallets)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const authToken = useAuthAccessToken()
 
-  const addWallet = (wallet: WalletItem) => {
-    setWallets((current) => [wallet, ...current])
-  }
+  const authConfig = useMemo(() => {
+    if (!authToken?.accessToken) {
+      return null
+    }
 
-  const updateWallet = (wallet: WalletItem) => {
-    setWallets((current) => current.map((item) => (item.id === wallet.id ? wallet : item)))
-  }
+    return authToken
+  }, [authToken])
 
-  const deleteWallet = (id: string) => {
-    setWallets((current) => current.filter((wallet) => wallet.id !== id))
-  }
+  const refreshWallets = useCallback(async () => {
+    if (!authConfig) {
+      setWallets([])
+      setError(null)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const records = await fetchWallets(authConfig)
+      setWallets(records.map(mapRecordToWallet))
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : 'Fetch failed.'
+      console.error('Fetch wallets failed', caughtError)
+      setError(message)
+      setWallets(initialWallets)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [authConfig])
+
+  useEffect(() => {
+    void refreshWallets()
+  }, [refreshWallets])
+
+  const addWallet = useCallback(
+    async (payload: CreateWalletDto) => {
+      if (!authConfig) {
+        setError('Missing authentication. Please sign in again.')
+        return false
+      }
+
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const record = await createWalletApi(payload, authConfig)
+        const nextWallet = mapRecordToWallet(record)
+        setWallets((current) => [nextWallet, ...current])
+        return true
+      } catch (caughtError) {
+        const message = caughtError instanceof Error ? caughtError.message : 'Create failed.'
+        console.error('Create wallet failed', caughtError)
+        setError(message)
+        return false
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [authConfig],
+  )
+
+  const updateWallet = useCallback(
+    async (id: string, payload: UpdateWalletDto, nextBalance?: number) => {
+      if (!authConfig) {
+        setError('Missing authentication. Please sign in again.')
+        return false
+      }
+
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const updateResponse = await updateWalletApi(id, payload, authConfig)
+        let finalRecord = updateResponse
+
+        if (typeof nextBalance === 'number') {
+          const currentWallet = wallets.find((wallet) => wallet.id === id)
+          const delta = Math.round(nextBalance - (currentWallet?.balance ?? 0))
+
+          if (delta < 0) {
+            setError('Không thể giảm số dư bằng thao tác cập nhật ví.')
+            return false
+          }
+
+          if (delta > 0) {
+            finalRecord = await addMoneyToWalletApi(id, { amount: delta }, authConfig)
+          }
+        }
+
+        const nextWallet = mapRecordToWallet(finalRecord)
+        setWallets((current) => current.map((item) => (item.id === id ? nextWallet : item)))
+        return true
+      } catch (caughtError) {
+        const message = caughtError instanceof Error ? caughtError.message : 'Update failed.'
+        console.error('Update wallet failed', caughtError)
+        setError(message)
+        return false
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [authConfig, wallets],
+  )
+
+  const deleteWallet = useCallback(
+    async (id: string) => {
+      setWallets((current) => current.filter((wallet) => wallet.id !== id))
+
+      if (!authConfig) {
+        return false
+      }
+
+      try {
+        await deleteWalletApi(id, authConfig)
+        return true
+      } catch (caughtError) {
+        console.error('Delete wallet failed', caughtError)
+        return false
+      }
+    },
+    [authConfig],
+  )
 
   const getWalletById = (id: string | undefined) => wallets.find((wallet) => wallet.id === id)
 
@@ -71,7 +240,17 @@ export function WalletProvider({ children }: PropsWithChildren) {
 
   return (
     <WalletContext.Provider
-      value={{ wallets, addWallet, updateWallet, deleteWallet, getWalletById, getWalletByName }}
+      value={{
+        wallets,
+        isLoading,
+        error,
+        refreshWallets,
+        addWallet,
+        updateWallet,
+        deleteWallet,
+        getWalletById,
+        getWalletByName,
+      }}
     >
       {children}
     </WalletContext.Provider>

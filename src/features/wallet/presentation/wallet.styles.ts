@@ -43,6 +43,32 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 14,
   },
+  statusCard: {
+    backgroundColor: '#F7F3EF',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusText: {
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0B2C20',
+  },
+  retryButton: {
+    backgroundColor: '#0A3A2A',
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
   searchInput: {
     flex: 1,
     color: '#0B1D17',

@@ -10,13 +10,14 @@ import {
   type WalletType,
   walletTypes,
 } from '@/features/wallet/data/wallet-context'
+import type { CreateWalletDto } from '@/features/wallet/data/wallet-api'
 import { formatCurrencyInput } from '@/features/transaction/utils/transaction-form'
 
 type WalletFormProps = {
   title: string
   submitLabel: string
   initialWallet?: WalletItem
-  onSubmit: (wallet: WalletItem) => void
+  onSubmit: (payload: CreateWalletDto, nextBalance: number) => void
 }
 
 export function WalletForm({ title, submitLabel, initialWallet, onSubmit }: WalletFormProps) {
@@ -55,13 +56,21 @@ export function WalletForm({ title, submitLabel, initialWallet, onSubmit }: Wall
       return
     }
 
-    onSubmit({
-      id: initialWallet?.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      name: trimmedName,
-      type,
-      balance: Number.isNaN(numericBalance) ? 0 : numericBalance,
-      spent: initialWallet?.spent ?? 0,
-    })
+    onSubmit(
+      {
+        name: trimmedName,
+        type:
+          type === 'bank'
+            ? 'BANK_ACCOUNT'
+            : type === 'saving'
+              ? 'SAVINGS'
+              : type === 'digital'
+                ? 'E_WALLET'
+                : 'CASH',
+        balance: Number.isNaN(numericBalance) ? 0 : numericBalance,
+      },
+      Number.isNaN(numericBalance) ? 0 : numericBalance,
+    )
   }
 
   return (

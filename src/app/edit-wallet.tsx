@@ -22,8 +22,17 @@ export default function EditWalletScreen() {
       title='CHỈNH SỬA VÍ'
       submitLabel='CẬP NHẬT VÍ'
       initialWallet={wallet}
-      onSubmit={(updatedWallet) => {
-        updateWallet(updatedWallet)
+      onSubmit={async (payload, nextBalance) => {
+        const success = await updateWallet(
+          wallet.id,
+          { name: payload.name, type: payload.type },
+          nextBalance,
+        )
+        if (!success) {
+          Alert.alert('Lỗi', 'Không thể cập nhật ví. Vui lòng thử lại.')
+          return
+        }
+
         Alert.alert('Đã cập nhật', 'Thông tin ví đã được cập nhật.', [
           { text: 'OK', onPress: () => router.back() },
         ])
