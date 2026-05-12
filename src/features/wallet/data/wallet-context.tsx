@@ -73,20 +73,6 @@ const mapWalletType = (type: WalletTypeApi): WalletType => {
   }
 }
 
-const mapWalletTypeToApi = (type: WalletType): WalletTypeApi => {
-  switch (type) {
-    case 'bank':
-      return 'BANK_ACCOUNT'
-    case 'saving':
-      return 'SAVINGS'
-    case 'digital':
-      return 'E_WALLET'
-    case 'cash':
-    default:
-      return 'CASH'
-  }
-}
-
 const mapRecordToWallet = (record: WalletRecord): WalletItem => ({
   id: record.walletId,
   name: record.name,

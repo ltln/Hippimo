@@ -105,7 +105,7 @@ export function TransactionForm({
     [categoryOptions],
   )
   const categoryIdByLabel = useMemo(() => {
-    const entries: Array<readonly [string, string]> = categoryOptions.map((option) => [
+    const entries: readonly [string, string][] = categoryOptions.map((option) => [
       option.label.trim().toLocaleLowerCase('vi-VN'),
       option.value,
     ])
