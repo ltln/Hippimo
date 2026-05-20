@@ -29,7 +29,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   searchInput: { flex: 1, fontSize: 13, color: '#0B2C20' },
-  limitCard: {
+  budgetCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
@@ -40,8 +40,8 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  limitHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  limitIconBg: {
+  budgetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  budgetIconBg: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -49,10 +49,10 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  limitTitleArea: { flex: 1, marginLeft: 12 },
-  limitTitle: { fontSize: 16, fontWeight: '800', color: '#0B1D17' },
-  limitSub: { fontSize: 12, color: '#666', marginTop: 2 },
-  limitActions: { flexDirection: 'row', gap: 12 },
+  budgetTitleArea: { flex: 1, marginLeft: 12 },
+  budgetTitle: { fontSize: 16, fontWeight: '800', color: '#0B1D17' },
+  budgetSub: { fontSize: 12, color: '#666', marginTop: 2 },
+  budgetActions: { flexDirection: 'row', gap: 12 },
   progressContainer: { marginTop: 4 },
   progressBarBg: { height: 8, backgroundColor: '#E0E0E0', borderRadius: 4, overflow: 'hidden' },
   progressBarFill: { height: '100%', borderRadius: 4 },

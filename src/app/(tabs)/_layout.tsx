@@ -63,9 +63,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name='limits'
+        name='budgets'
         options={{
-          title: 'Hạn mức',
+          title: 'Ngân sách',
           tabBarIcon: ({ color }) => <Ionicons name='stats-chart' size={22} color={color} />,
         }}
       />

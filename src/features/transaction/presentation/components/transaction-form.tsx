@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 import {
   Alert,
   Modal,
@@ -13,9 +13,16 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import {
+  mapCategoriesToOptions,
+  type CategoryOption,
+  useCategories,
+} from '@/features/category/data/use-categories'
 import type { TransactionItem } from '@/features/transaction/data/transaction-context'
 import { useWallets } from '@/features/wallet/data/wallet-context'
 import {
+  getCategoryColor,
+  getCategoryIcon,
   buildTransaction,
   defaultTransactionFormValues,
   formatCurrencyInput,
@@ -28,15 +35,17 @@ import {
 type SelectionOption = {
   value: string
   label: string
+  icon?: string | null
+  color?: string | null
 }
 
-const categoryOptions: SelectionOption[] = [
-  { value: 'Ăn uống', label: 'Ăn uống' },
-  { value: 'Di chuyển', label: 'Di chuyển' },
-  { value: 'Nhà cửa', label: 'Nhà cửa' },
-  { value: 'Giải trí', label: 'Giải trí' },
-  { value: 'Mua sắm', label: 'Mua sắm' },
-  { value: 'Làm đẹp', label: 'Làm đẹp' },
+const defaultCategoryOptions: CategoryOption[] = [
+  { value: 'Ăn uống', label: 'Ăn uống', id: '' },
+  { value: 'Di chuyển', label: 'Di chuyển', id: '' },
+  { value: 'Nhà cửa', label: 'Nhà cửa', id: '' },
+  { value: 'Giải trí', label: 'Giải trí', id: '' },
+  { value: 'Mua sắm', label: 'Mua sắm', id: '' },
+  { value: 'Làm đẹp', label: 'Làm đẹp', id: '' },
 ]
 type TransactionFormProps = {
   title: string
@@ -54,6 +63,7 @@ export function TransactionForm({
   onSubmit,
 }: TransactionFormProps) {
   const insets = useSafeAreaInsets()
+  const { categories } = useCategories({ type: 'EXPENSE', status: 'ACTIVE' })
   const { wallets } = useWallets()
   const amountInputRef = useRef<TextInput>(null)
   const [mode, setMode] = useState<CreateMode>(initialValues.mode)
@@ -97,6 +107,29 @@ export function TransactionForm({
     ],
     [],
   )
+
+  const categoryOptions = useMemo(() => {
+    const options = mapCategoriesToOptions(categories)
+    return options.length ? options : defaultCategoryOptions
+  }, [categories])
+
+  const selectedCategory = useMemo(
+    () => categoryOptions.find((option) => option.value === expenseCategory),
+    [categoryOptions, expenseCategory],
+  )
+
+  useEffect(() => {
+    if (mode === 'expense' && categoryOptions.length) {
+      const hasCategory = categoryOptions.some((option) => option.value === expenseCategory)
+      const isDefaultCategory =
+        !initialValues.expenseCategory ||
+        initialValues.expenseCategory === defaultTransactionFormValues.expenseCategory
+
+      if (!hasCategory && isDefaultCategory) {
+        setExpenseCategory(categoryOptions[0].value)
+      }
+    }
+  }, [categoryOptions, expenseCategory, initialValues.expenseCategory, mode])
 
   useEffect(() => {
     setMode(initialValues.mode)
@@ -191,6 +224,10 @@ export function TransactionForm({
       expenseWallet,
       expenseWalletTypeLabel: expenseWalletType,
       expenseCategory,
+      categoryIcon:
+        (selectedCategory?.icon as TransactionItem['icon'] | undefined) ??
+        getCategoryIcon(expenseCategory),
+      categoryColor: selectedCategory?.color ?? getCategoryColor(expenseCategory),
       transferFromWallet,
       transferToWallet,
       wallets,
@@ -505,6 +542,19 @@ function SelectionModal({
               onPress={() => onSelect(option.value)}
             >
               <View style={styles.modalOptionContent}>
+                {option.icon || option.color ? (
+                  <View
+                    style={[styles.modalOptionIcon, { backgroundColor: option.color ?? '#1B4D39' }]}
+                  >
+                    {option.icon ? (
+                      <MaterialCommunityIcons
+                        name={option.icon as ComponentProps<typeof MaterialCommunityIcons>['name']}
+                        size={16}
+                        color='#FFFFFF'
+                      />
+                    ) : null}
+                  </View>
+                ) : null}
                 <Text style={styles.modalOptionText}>{option.label}</Text>
               </View>
               <Ionicons name='chevron-forward' size={16} color='#1B4D39' />
@@ -763,6 +813,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  modalOptionIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalOptionText: {
     fontSize: 15,

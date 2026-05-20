@@ -59,6 +59,8 @@ export function buildTransaction({
   expenseWallet,
   expenseWalletTypeLabel,
   expenseCategory,
+  categoryIcon,
+  categoryColor,
   transferFromWallet,
   transferToWallet,
   wallets,
@@ -71,6 +73,8 @@ export function buildTransaction({
   expenseWallet: string
   expenseWalletTypeLabel?: string
   expenseCategory: string
+  categoryIcon?: TransactionItem['icon']
+  categoryColor?: string | null
   transferFromWallet: string
   transferToWallet: string
   wallets: WalletItem[]
@@ -121,8 +125,8 @@ export function buildTransaction({
     amountValue: -amountValue,
     dateLabel: date.display,
     dateISO: date.iso,
-    icon: mapCategoryIcon(expenseCategory),
-    iconBackground: mapCategoryColor(expenseCategory),
+    icon: categoryIcon ?? getCategoryIcon(expenseCategory),
+    iconBackground: categoryColor ?? getCategoryColor(expenseCategory),
     type: 'expense',
     walletId: expenseWalletItem?.id,
     detail: {
@@ -226,7 +230,7 @@ function matchKnownWalletId(value: string | undefined, wallets: WalletItem[]) {
   return findWallet(wallets, value)?.id ?? wallets[0].id
 }
 
-function mapCategoryIcon(category: string): TransactionItem['icon'] {
+export function getCategoryIcon(category: string): TransactionItem['icon'] {
   const upper = category.toUpperCase()
   if (upper === 'TIỀN MẶT') return 'cash'
   if (upper === 'NGÂN HÀNG') return 'bank'
@@ -242,7 +246,7 @@ function mapCategoryIcon(category: string): TransactionItem['icon'] {
   return pickFromList(category, customCategoryIcons)
 }
 
-function mapCategoryColor(category: string) {
+export function getCategoryColor(category: string) {
   const upper = category.toUpperCase()
   if (upper === 'TIỀN MẶT') return '#128A3D'
   if (upper === 'NGÂN HÀNG') return '#3D94C6'

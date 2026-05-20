@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons'
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Alert,
   Modal,
@@ -13,15 +13,21 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import type { LimitItem, LimitPeriod } from '@/shared/contexts/limit-context'
+import {
+  mapCategoriesToOptions,
+  type CategoryOption,
+  useCategories,
+} from '@/features/category/data/use-categories'
+import { getCategoryColor, getCategoryIcon } from '@/features/transaction/utils/transaction-form'
+import type { BudgetItem, BudgetPeriod } from '@/shared/contexts/budget-context'
 
-const categoryOptions = [
-  { value: 'Ăn uống', label: 'Ăn uống' },
-  { value: 'Di chuyển', label: 'Di chuyển' },
-  { value: 'Nhà cửa', label: 'Nhà cửa' },
-  { value: 'Giải trí', label: 'Giải trí' },
-  { value: 'Mua sắm', label: 'Mua sắm' },
-  { value: 'Làm đẹp', label: 'Làm đẹp' },
+const defaultCategoryOptions: CategoryOption[] = [
+  { value: 'Ăn uống', label: 'Ăn uống', id: '' },
+  { value: 'Di chuyển', label: 'Di chuyển', id: '' },
+  { value: 'Nhà cửa', label: 'Nhà cửa', id: '' },
+  { value: 'Giải trí', label: 'Giải trí', id: '' },
+  { value: 'Mua sắm', label: 'Mua sắm', id: '' },
+  { value: 'Làm đẹp', label: 'Làm đẹp', id: '' },
 ]
 
 const periodOptions = [
@@ -29,31 +35,51 @@ const periodOptions = [
   { value: 'monthly', label: 'Hàng tháng' },
 ]
 
-type LimitFormProps = {
+type BudgetFormProps = {
   title: string
   submitLabel: string
-  initialValues?: Partial<LimitItem>
-  limitId?: string
-  onSubmit: (limit: LimitItem) => void
+  initialValues?: Partial<BudgetItem>
+  budgetId?: string
+  onSubmit: (budget: BudgetItem) => Promise<void> | void
 }
 
-export function LimitForm({
+export function BudgetForm({
   title,
   submitLabel,
   initialValues,
-  limitId,
+  budgetId,
   onSubmit,
-}: LimitFormProps) {
+}: BudgetFormProps) {
   const insets = useSafeAreaInsets()
+  const { categories } = useCategories({ type: 'EXPENSE', status: 'ACTIVE' })
 
-  const [limitTitle, setLimitTitle] = useState(initialValues?.title || '')
+  const [budgetTitle, setBudgetTitle] = useState(initialValues?.title || '')
   const [amount, setAmount] = useState(String(initialValues?.amount || '0'))
-  const [period, setPeriod] = useState<LimitPeriod>(initialValues?.period || 'weekly')
+  const [period, setPeriod] = useState<BudgetPeriod>(initialValues?.period || 'weekly')
   const [category, setCategory] = useState(initialValues?.category || 'Ăn uống')
   const [startDate, setStartDate] = useState(
     initialValues?.startDate || new Date().toISOString().split('T')[0],
   )
   const [openDropdown, setOpenDropdown] = useState<null | 'period' | 'category'>(null)
+
+  const categoryOptions = useMemo(() => {
+    const options = mapCategoriesToOptions(categories)
+    return options.length ? options : defaultCategoryOptions
+  }, [categories])
+
+  const selectedCategory = useMemo(
+    () => categoryOptions.find((option) => option.value === category),
+    [category, categoryOptions],
+  )
+
+  useEffect(() => {
+    if (!initialValues?.category && categoryOptions.length) {
+      const hasCategory = categoryOptions.some((option) => option.value === category)
+      if (!hasCategory) {
+        setCategory(categoryOptions[0].value)
+      }
+    }
+  }, [category, categoryOptions, initialValues?.category])
 
   // Tự động tính ngày kết thúc cho chu kỳ tuần (7 ngày)
   const autoEndDate = useMemo(() => {
@@ -69,25 +95,36 @@ export function LimitForm({
     }
   }, [startDate, period])
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const numericAmount = parseInt(amount, 10)
-    if (!limitTitle.trim() || !numericAmount || numericAmount <= 0) {
+    if (!budgetTitle.trim() || !numericAmount || numericAmount <= 0) {
       Alert.alert('Thông báo', 'Vui lòng nhập đầy đủ thông tin tên và số tiền hợp lệ')
       return
     }
 
-    const limit: LimitItem = {
-      id: limitId || `limit-${Date.now()}`,
-      title: limitTitle,
+    if (!selectedCategory?.id) {
+      Alert.alert('Thông báo', 'Danh mục chưa đồng bộ. Vui lòng thử lại.')
+      return
+    }
+
+    const resolvedIcon =
+      (selectedCategory.icon as BudgetItem['icon'] | undefined) ?? getCategoryIcon(category)
+    const resolvedColor = selectedCategory.color ?? getCategoryColor(category)
+
+    const budget: BudgetItem = {
+      id: budgetId || `budget-${Date.now()}`,
+      title: budgetTitle,
       amount: numericAmount,
       spent: initialValues?.spent || 0,
       period,
       category,
+      categoryId: selectedCategory.id,
       startDate,
       endDate: period === 'weekly' ? autoEndDate : undefined, // Lưu ngày kết thúc cho chu kỳ tuần
-      icon: 'cash-multiple',
+      icon: resolvedIcon,
+      iconColor: resolvedColor,
     }
-    onSubmit(limit)
+    await onSubmit(budget)
   }
 
   return (
@@ -103,11 +140,11 @@ export function LimitForm({
 
         {/* Khung 1: Tên & Số tiền */}
         <View style={styles.card}>
-          <Text style={styles.label}>THÔNG TIN HẠN MỨC</Text>
+          <Text style={styles.label}>THÔNG TIN NGÂN SÁCH</Text>
           <TextInput
-            value={limitTitle}
-            onChangeText={setLimitTitle}
-            placeholder='Tên hạn mức'
+            value={budgetTitle}
+            onChangeText={setBudgetTitle}
+            placeholder='Tên ngân sách'
             placeholderTextColor='rgba(255,255,255,0.4)'
             style={styles.input}
           />
@@ -214,7 +251,16 @@ function SelectionModal({ visible, title, options, onClose, onSelect }: any) {
           <Text style={styles.modalTitle}>{title}</Text>
           {options.map((o: any) => (
             <Pressable key={o.value} style={styles.modalOption} onPress={() => onSelect(o.value)}>
-              <Text style={styles.modalOptionText}>{o.label}</Text>
+              <View style={styles.modalOptionContent}>
+                {o.icon || o.color ? (
+                  <View style={[styles.modalOptionIcon, { backgroundColor: o.color ?? '#1B4D39' }]}>
+                    {o.icon ? (
+                      <MaterialCommunityIcons name={o.icon} size={16} color='#FFFFFF' />
+                    ) : null}
+                  </View>
+                ) : null}
+                <Text style={styles.modalOptionText}>{o.label}</Text>
+              </View>
               <Ionicons name='chevron-forward' size={16} color='#1B4D39' />
             </Pressable>
           ))}
@@ -305,6 +351,19 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+  },
+  modalOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  modalOptionIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalOptionText: { fontSize: 16, fontWeight: '700', color: '#1B4D39' },
 })

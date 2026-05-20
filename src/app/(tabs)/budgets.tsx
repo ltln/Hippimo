@@ -4,30 +4,30 @@ import { useMemo, useState } from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import { LimitCard } from '@/features/limit/presentation/limits-components'
-import { styles } from '@/features/limit/presentation/limits.styles'
-import { useLimits, type LimitPeriod } from '@/shared/contexts/limit-context'
+import { BudgetCard } from '@/features/budget/presentation/budgets-components'
+import { styles } from '@/features/budget/presentation/budgets.styles'
+import { useBudgets, type BudgetPeriod } from '@/shared/contexts/budget-context'
 import { confirmDelete } from '@/shared/utils/confirm-delete'
 
-type PeriodFilter = 'all' | LimitPeriod
+type PeriodFilter = 'all' | BudgetPeriod
 
-export default function LimitsScreen() {
+export default function BudgetsScreen() {
   const insets = useSafeAreaInsets()
-  const { limits, deleteLimit } = useLimits()
+  const { budgets, deleteBudget } = useBudgets()
 
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
-  const filteredLimits = useMemo(() => {
-    return limits.filter((limit) => {
-      const matchesPeriod = periodFilter === 'all' || limit.period === periodFilter
+  const filteredBudgets = useMemo(() => {
+    return budgets.filter((budget) => {
+      const matchesPeriod = periodFilter === 'all' || budget.period === periodFilter
       const matchesSearch =
-        limit.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        limit.category?.toLowerCase().includes(searchQuery.toLowerCase())
+        budget.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        budget.category?.toLowerCase().includes(searchQuery.toLowerCase())
       return matchesPeriod && matchesSearch
     })
-  }, [limits, periodFilter, searchQuery])
+  }, [budgets, periodFilter, searchQuery])
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
@@ -36,7 +36,7 @@ export default function LimitsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>HẠN MỨC</Text>
+          <Text style={styles.headerTitle}>NGÂN SÁCH</Text>
           <View style={styles.headerActions}>
             <Pressable
               onPress={() => setShowFilters((current) => !current)}
@@ -48,7 +48,7 @@ export default function LimitsScreen() {
             <Pressable
               hitSlop={8}
               style={styles.headerIconButton}
-              onPress={() => router.push('/add-limit')}
+              onPress={() => router.push('/add-budget')}
             >
               <Ionicons name='add' size={26} color='#081A13' />
             </Pressable>
@@ -86,14 +86,16 @@ export default function LimitsScreen() {
           </View>
         )}
 
-        {filteredLimits.map((limit) => (
-          <LimitCard
-            key={limit.id}
-            limit={limit}
+        {filteredBudgets.map((budget) => (
+          <BudgetCard
+            key={budget.id}
+            budget={budget}
             onDelete={() => {
-              const id = limit.id
-              const title = limit.title
-              confirmDelete('Xóa hạn mức', `Bạn có chắc muốn xóa ${title}?`, () => deleteLimit(id))
+              const id = budget.id
+              const title = budget.title
+              confirmDelete('Xóa ngân sách', `Bạn có chắc muốn xóa ${title}?`, () =>
+                deleteBudget(id),
+              )
             }}
           />
         ))}

@@ -90,7 +90,12 @@ export function DetailCard({
           </View>
 
           <View style={[styles.detailIconWrap, styles.detailIconWrapDark]}>
-            <View style={styles.detailRoundIcon}>
+            <View
+              style={[
+                styles.detailRoundIcon,
+                { backgroundColor: item.iconBackground ?? '#0A4D2E' },
+              ]}
+            >
               <MaterialCommunityIcons name='swap-horizontal' size={24} color='#D4F8E6' />
             </View>
             <Text style={styles.detailFooterTitle}>Chuyển tiền ví</Text>
@@ -103,7 +108,12 @@ export function DetailCard({
           </Text>
 
           <View style={[styles.detailIconWrap, styles.detailIconWrapDark]}>
-            <View style={styles.detailRoundIcon}>
+            <View
+              style={[
+                styles.detailRoundIcon,
+                { backgroundColor: item.iconBackground ?? '#0A4D2E' },
+              ]}
+            >
               <MaterialCommunityIcons name={item.icon} size={24} color='#D4F8E6' />
             </View>
             <Text style={styles.detailFooterTitle}>{item.detail.footer}</Text>
