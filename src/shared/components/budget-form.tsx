@@ -112,10 +112,12 @@ export function BudgetForm({
   const accessToken = authResponse?.tokens.accessToken
   const {
     categories,
-    error: categoriesError,
     isLoading: isLoadingCategories,
     refresh,
-  } = useCategories({ type: 'EXPENSE', status: 'ACTIVE' })
+  } = useCategories({
+    type: 'EXPENSE',
+    status: 'ACTIVE',
+  })
 
   const [budgetTitle, setBudgetTitle] = useState(initialValues?.title || '')
   const [amount, setAmount] = useState(String(initialValues?.amount || '0'))
