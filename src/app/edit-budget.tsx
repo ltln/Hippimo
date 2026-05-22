@@ -4,11 +4,12 @@ import { BudgetForm } from '@/shared/components/budget-form'
 import { useBudgets } from '@/shared/contexts/budget-context'
 
 export default function EditBudgetScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>()
+  const params = useLocalSearchParams<{ id: string | string[] }>()
+  const id = Array.isArray(params.id) ? params.id[0] : params.id
   const { budgets, updateBudget } = useBudgets()
   const budget = budgets.find((item) => item.id === id)
 
-  if (!budget) {
+  if (!budget || !id) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>Không tìm thấy ngân sách này!</Text>

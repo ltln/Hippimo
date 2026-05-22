@@ -18,7 +18,12 @@ import {
   type CategoryOption,
   useCategories,
 } from '@/features/category/data/use-categories'
-import { getCategoryColor, getCategoryIcon } from '@/features/transaction/utils/transaction-form'
+import { useAuth } from '@/features/auth/data/auth-context'
+import {
+  getCategoryColor,
+  getCategoryIcon,
+  normalizeDate,
+} from '@/features/transaction/utils/transaction-form'
 import type { BudgetItem, BudgetPeriod } from '@/shared/contexts/budget-context'
 
 const defaultCategoryOptions: CategoryOption[] = [
@@ -34,6 +39,58 @@ const periodOptions = [
   { value: 'weekly', label: 'Hàng tuần' },
   { value: 'monthly', label: 'Hàng tháng' },
 ]
+
+const buildDefaultTitle = (categoryName: string, period: BudgetPeriod) => {
+  return `${categoryName} ${period === 'weekly' ? 'hàng tuần' : 'hàng tháng'}`
+}
+
+const isValidDateOnly = (value: string) => {
+  const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(value)
+  if (!match) return false
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return (
+    !Number.isNaN(date.getTime()) &&
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  )
+}
+
+const normalizeBudgetStartDate = (value: string, period: BudgetPeriod) => {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  const normalized = normalizeDate(trimmed)
+  if (normalized) {
+    return period === 'monthly' ? `${normalized.iso.slice(0, 7)}-01` : normalized.iso
+  }
+
+  const match = /^([0-9]{4})-([0-9]{2})(?:-([0-9]{2}))?$/.exec(trimmed)
+  if (!match) return null
+
+  const year = match[1]
+  const month = match[2]
+  const day = match[3] ?? ''
+  if (period === 'weekly') {
+    if (!day) return null
+    const iso = `${year}-${month}-${day}`
+    return isValidDateOnly(iso) ? iso : null
+  }
+
+  const iso = `${year}-${month}-01`
+  return isValidDateOnly(iso) ? iso : null
+}
+
+const buildWeekEndDate = (start: string) => {
+  const date = new Date(start)
+  if (Number.isNaN(date.getTime())) return ''
+  const end = new Date(date)
+  end.setDate(date.getDate() + 6)
+  return end.toISOString().split('T')[0]
+}
 
 type BudgetFormProps = {
   title: string
@@ -51,7 +108,14 @@ export function BudgetForm({
   onSubmit,
 }: BudgetFormProps) {
   const insets = useSafeAreaInsets()
-  const { categories } = useCategories({ type: 'EXPENSE', status: 'ACTIVE' })
+  const { authResponse } = useAuth()
+  const accessToken = authResponse?.tokens.accessToken
+  const {
+    categories,
+    error: categoriesError,
+    isLoading: isLoadingCategories,
+    refresh,
+  } = useCategories({ type: 'EXPENSE', status: 'ACTIVE' })
 
   const [budgetTitle, setBudgetTitle] = useState(initialValues?.title || '')
   const [amount, setAmount] = useState(String(initialValues?.amount || '0'))
@@ -61,16 +125,20 @@ export function BudgetForm({
     initialValues?.startDate || new Date().toISOString().split('T')[0],
   )
   const [openDropdown, setOpenDropdown] = useState<null | 'period' | 'category'>(null)
+  const [formError, setFormError] = useState<string | null>(null)
 
   const categoryOptions = useMemo(() => {
     const options = mapCategoriesToOptions(categories)
     return options.length ? options : defaultCategoryOptions
   }, [categories])
 
-  const selectedCategory = useMemo(
-    () => categoryOptions.find((option) => option.value === category),
-    [category, categoryOptions],
-  )
+  const selectedCategory = useMemo(() => {
+    if (!categoryOptions.length) {
+      return undefined
+    }
+
+    return categoryOptions.find((option) => option.value === category) ?? categoryOptions[0]
+  }, [category, categoryOptions])
 
   useEffect(() => {
     if (!initialValues?.category && categoryOptions.length) {
@@ -81,55 +149,103 @@ export function BudgetForm({
     }
   }, [category, categoryOptions, initialValues?.category])
 
-  // Tự động tính ngày kết thúc cho chu kỳ tuần (7 ngày)
+  useEffect(() => {
+    if (!selectedCategory) {
+      return
+    }
+
+    if (selectedCategory.value !== category) {
+      setCategory(selectedCategory.value)
+    }
+  }, [category, selectedCategory])
+
+  useEffect(() => {
+    if (!initialValues?.categoryId || !categoryOptions.length) {
+      return
+    }
+
+    const matchedById = categoryOptions.find((option) => option.id === initialValues.categoryId)
+    if (matchedById && matchedById.value !== category) {
+      setCategory(matchedById.value)
+    }
+  }, [category, categoryOptions, initialValues?.categoryId])
+
   const autoEndDate = useMemo(() => {
     if (period !== 'weekly') return ''
-    try {
-      const start = new Date(startDate)
-      if (isNaN(start.getTime())) return ''
-      const end = new Date(start)
-      end.setDate(start.getDate() + 6)
-      return end.toISOString().split('T')[0]
-    } catch {
-      return ''
-    }
+    const normalizedStart = normalizeBudgetStartDate(startDate, period)
+    if (!normalizedStart) return ''
+    return buildWeekEndDate(normalizedStart)
   }, [startDate, period])
 
   const handleSave = async () => {
-    const numericAmount = parseInt(amount, 10)
-    if (!budgetTitle.trim() || !numericAmount || numericAmount <= 0) {
-      Alert.alert('Thông báo', 'Vui lòng nhập đầy đủ thông tin tên và số tiền hợp lệ')
+    setFormError(null)
+
+    if (!budgetTitle.trim()) {
+      const message = 'Vui lòng nhập tên ngân sách'
+      setFormError(message)
+      Alert.alert('Thông báo', message)
       return
     }
 
-    if (!selectedCategory?.id) {
-      Alert.alert('Thông báo', 'Danh mục chưa đồng bộ. Vui lòng thử lại.')
+    const numericAmount = parseInt(amount, 10)
+    if (!numericAmount || numericAmount <= 0) {
+      const message = 'Vui lòng nhập số tiền hợp lệ'
+      setFormError(message)
+      Alert.alert('Thông báo', message)
       return
+    }
+
+    const normalizedStartDate = normalizeBudgetStartDate(startDate, period)
+    if (!normalizedStartDate) {
+      const message = 'Ngày bắt đầu chưa hợp lệ. Dạng hợp lệ: dd/mm/yyyy hoặc yyyy-mm-dd.'
+      setFormError(message)
+      Alert.alert('Thông báo', message)
+      return
+    }
+
+    const resolvedCategoryId =
+      selectedCategory?.id ||
+      categories.find((item) => item.name === category)?.categoryId ||
+      initialValues?.categoryId
+
+    if (accessToken && !resolvedCategoryId && refresh) {
+      refresh()
     }
 
     const resolvedIcon =
-      (selectedCategory.icon as BudgetItem['icon'] | undefined) ?? getCategoryIcon(category)
-    const resolvedColor = selectedCategory.color ?? getCategoryColor(category)
+      (selectedCategory?.icon as BudgetItem['icon'] | undefined) ?? getCategoryIcon(category)
+    const resolvedColor = selectedCategory?.color ?? getCategoryColor(category)
+    const resolvedTitle = budgetTitle.trim() || buildDefaultTitle(category, period)
+    const resolvedEndDate = period === 'weekly' ? buildWeekEndDate(normalizedStartDate) : undefined
 
     const budget: BudgetItem = {
       id: budgetId || `budget-${Date.now()}`,
-      title: budgetTitle,
+      title: resolvedTitle,
       amount: numericAmount,
       spent: initialValues?.spent || 0,
       period,
       category,
-      categoryId: selectedCategory.id,
-      startDate,
-      endDate: period === 'weekly' ? autoEndDate : undefined, // Lưu ngày kết thúc cho chu kỳ tuần
+      categoryId: resolvedCategoryId,
+      startDate: normalizedStartDate,
+      endDate: resolvedEndDate,
       icon: resolvedIcon,
       iconColor: resolvedColor,
     }
-    await onSubmit(budget)
+    try {
+      await onSubmit(budget)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Vui lòng thử lại sau.'
+      setFormError(message)
+      Alert.alert('Không thể lưu ngân sách', message)
+    }
   }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 20 }]}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 20 }]}
+        keyboardShouldPersistTaps='handled'
+      >
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name='arrow-back' size={24} color='#0B1D17' />
@@ -138,7 +254,6 @@ export function BudgetForm({
           <View style={{ width: 40 }} />
         </View>
 
-        {/* Khung 1: Tên & Số tiền */}
         <View style={styles.card}>
           <Text style={styles.label}>THÔNG TIN NGÂN SÁCH</Text>
           <TextInput
@@ -159,7 +274,6 @@ export function BudgetForm({
           />
         </View>
 
-        {/* Khung 2: Danh mục áp dụng */}
         <View style={styles.card}>
           <Text style={styles.label}>DANH MỤC ÁP DỤNG</Text>
           <View style={styles.categoryRow}>
@@ -173,7 +287,6 @@ export function BudgetForm({
           </View>
         </View>
 
-        {/* Khung 3: Chu kỳ & Thời gian */}
         <View style={styles.card}>
           <Text style={styles.label}>CHU KỲ & THỜI GIAN</Text>
           <View style={styles.row}>
@@ -211,12 +324,20 @@ export function BudgetForm({
           </View>
         </View>
 
-        <Pressable style={styles.saveButton} onPress={handleSave}>
+        {formError ? (
+          <View style={styles.errorCard}>
+            <Text style={styles.errorText}>{formError}</Text>
+          </View>
+        ) : null}
+
+        <Pressable
+          style={[styles.saveButton, isLoadingCategories ? { opacity: 0.6 } : null]}
+          onPress={handleSave}
+        >
           <Text style={styles.saveButtonText}>{submitLabel}</Text>
         </Pressable>
       </ScrollView>
 
-      {/* Modal Chọn Chu kỳ */}
       <SelectionModal
         visible={openDropdown === 'period'}
         title='Chọn chu kỳ'
@@ -228,7 +349,6 @@ export function BudgetForm({
         }}
       />
 
-      {/* Modal Chọn Danh mục*/}
       <SelectionModal
         visible={openDropdown === 'category'}
         title='Chọn danh mục'
@@ -291,7 +411,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-  categoryRow: { flexDirection: 'row', gap: 10, alignItems: 'center' }, // Định nghĩa để ô nhập và nút list nằm ngang[cite: 2]
+  categoryRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   categoryListButton: {
     backgroundColor: '#063629',
     borderRadius: 10,
@@ -330,6 +450,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   saveButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
+  errorCard: {
+    backgroundColor: '#FFE7E7',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorText: { color: '#8A1C1C', fontSize: 13, fontWeight: '700' },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

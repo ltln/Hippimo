@@ -1,5 +1,5 @@
 import type { ComponentProps, PropsWithChildren } from 'react'
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
 import type {
@@ -137,6 +137,15 @@ export function BudgetProvider({ children }: PropsWithChildren) {
     return new Map(categories.map((category) => [category.categoryId, category]))
   }, [categories])
 
+  const fetchBudgets = useCallback(async () => {
+    if (!accessToken) {
+      return
+    }
+
+    const data = await listBudgets(accessToken)
+    setApiBudgets(data)
+  }, [accessToken])
+
   useEffect(() => {
     if (!accessToken) {
       setApiBudgets([])
@@ -144,19 +153,18 @@ export function BudgetProvider({ children }: PropsWithChildren) {
       return
     }
 
+    setBudgets([])
+
     let isMounted = true
 
     const loadBudgets = async () => {
       try {
-        const data = await listBudgets(accessToken)
-        if (isMounted) {
-          setApiBudgets(data)
-        }
+        await fetchBudgets()
       } catch (error) {
         console.error('Failed to load budgets', error)
         if (isMounted) {
           setApiBudgets([])
-          setBudgets(initialBudgets)
+          setBudgets([])
         }
       }
     }
@@ -166,7 +174,7 @@ export function BudgetProvider({ children }: PropsWithChildren) {
     return () => {
       isMounted = false
     }
-  }, [accessToken])
+  }, [accessToken, fetchBudgets])
 
   useEffect(() => {
     if (!accessToken) {
@@ -174,7 +182,7 @@ export function BudgetProvider({ children }: PropsWithChildren) {
     }
 
     if (apiBudgets.length === 0) {
-      setBudgets(initialBudgets)
+      setBudgets([])
       return
     }
 
@@ -185,13 +193,9 @@ export function BudgetProvider({ children }: PropsWithChildren) {
   }, [accessToken, apiBudgets, categoryById])
 
   const addBudget = async (budget: BudgetItem) => {
-    if (!accessToken) {
+    if (!accessToken || !budget.categoryId) {
       setBudgets((current) => [budget, ...current])
       return
-    }
-
-    if (!budget.categoryId) {
-      throw new Error('Missing category id')
     }
 
     const payload: CreateBudgetDto = {
@@ -203,17 +207,23 @@ export function BudgetProvider({ children }: PropsWithChildren) {
     }
 
     const created = await createBudget(payload, accessToken)
-    setApiBudgets((current) => [created, ...current])
+
+    if (!created?.budgetId) {
+      throw new Error('Invalid budget response')
+    }
+
+    try {
+      await fetchBudgets()
+    } catch (error) {
+      console.error('Failed to refresh budgets after create', error)
+      setApiBudgets((current) => [created, ...current])
+    }
   }
 
   const updateBudget = async (budget: BudgetItem) => {
-    if (!accessToken) {
+    if (!accessToken || !budget.categoryId) {
       setBudgets((current) => current.map((item) => (item.id === budget.id ? budget : item)))
       return
-    }
-
-    if (!budget.categoryId) {
-      throw new Error('Missing category id')
     }
 
     const updated = await updateBudgetApi(
@@ -228,9 +238,18 @@ export function BudgetProvider({ children }: PropsWithChildren) {
       accessToken,
     )
 
-    setApiBudgets((current) =>
-      current.map((item) => (item.budgetId === updated.budgetId ? updated : item)),
-    )
+    if (!updated?.budgetId) {
+      throw new Error('Invalid budget response')
+    }
+
+    try {
+      await fetchBudgets()
+    } catch (error) {
+      console.error('Failed to refresh budgets after update', error)
+      setApiBudgets((current) =>
+        current.map((item) => (item.budgetId === updated.budgetId ? updated : item)),
+      )
+    }
   }
 
   const deleteBudget = async (id: string) => {

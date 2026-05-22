@@ -11,12 +11,37 @@ const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, '')
 
 export const budgetsEndpoint = `${normalizedApiBaseUrl}/budgets`
 
+const DEFAULT_TIMEOUT_MS = 15000
+
 class BudgetApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
   ) {
     super(message)
+  }
+}
+
+const fetchWithTimeout = async (
+  input: RequestInfo | URL,
+  init: RequestInit,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+) => {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new BudgetApiError('Request timeout. Please try again.', 408)
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 
@@ -60,7 +85,7 @@ const buildAuthHeaders = (accessToken: string) => ({
 })
 
 export const createBudget = async (payload: CreateBudgetDto, accessToken: string) => {
-  const response = await fetch(budgetsEndpoint, {
+  const response = await fetchWithTimeout(budgetsEndpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -73,7 +98,7 @@ export const createBudget = async (payload: CreateBudgetDto, accessToken: string
 }
 
 export const listBudgets = async (accessToken: string) => {
-  const response = await fetch(budgetsEndpoint, {
+  const response = await fetchWithTimeout(budgetsEndpoint, {
     method: 'GET',
     headers: buildAuthHeaders(accessToken),
   })
@@ -82,7 +107,7 @@ export const listBudgets = async (accessToken: string) => {
 }
 
 export const getBudgetById = async (id: string, accessToken: string) => {
-  const response = await fetch(`${budgetsEndpoint}/${id}`, {
+  const response = await fetchWithTimeout(`${budgetsEndpoint}/${id}`, {
     method: 'GET',
     headers: buildAuthHeaders(accessToken),
   })
@@ -91,7 +116,7 @@ export const getBudgetById = async (id: string, accessToken: string) => {
 }
 
 export const updateBudget = async (id: string, payload: UpdateBudgetDto, accessToken: string) => {
-  const response = await fetch(`${budgetsEndpoint}/${id}`, {
+  const response = await fetchWithTimeout(`${budgetsEndpoint}/${id}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -104,7 +129,7 @@ export const updateBudget = async (id: string, payload: UpdateBudgetDto, accessT
 }
 
 export const deleteBudget = async (id: string, accessToken: string) => {
-  const response = await fetch(`${budgetsEndpoint}/${id}`, {
+  const response = await fetchWithTimeout(`${budgetsEndpoint}/${id}`, {
     method: 'DELETE',
     headers: buildAuthHeaders(accessToken),
   })
