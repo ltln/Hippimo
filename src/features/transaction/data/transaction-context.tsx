@@ -16,7 +16,7 @@ import type {
   Transaction,
 } from '@/features/transaction/domain/transaction.types'
 import { getCategoryColor, getCategoryIcon } from '@/features/transaction/utils/transaction-form'
-import { useWallets, type WalletItem } from '@/features/wallet/data/wallet-context'
+import { useWallets } from '@/features/wallet/data/wallet-context'
 import { useBudgets } from '@/shared/contexts/budget-context'
 
 export type TransactionType = 'income' | 'expense' | 'transfer'

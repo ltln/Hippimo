@@ -446,7 +446,7 @@ function BudgetCalendarModal({
 
   const firstDay = new Date(viewYear, viewMonth - 1, 1).getDay()
   const leadingBlankDays = firstDay === 0 ? 6 : firstDay - 1
-  const dayCells: Array<{ key: string; day?: number }> = [
+  const dayCells: { key: string; day?: number }[] = [
     ...Array.from({ length: leadingBlankDays }, (_, index) => ({ key: `empty-${index}` })),
     ...Array.from({ length: getDaysInMonth(viewYear, viewMonth) }, (_, index) => ({
       key: `day-${index + 1}`,
