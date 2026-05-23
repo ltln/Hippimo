@@ -79,37 +79,20 @@ export const styles = StyleSheet.create({
   },
   walletSummary: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    gap: 16,
-  },
-  progressWrap: {
-    width: 132,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  progressRing: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 7,
-    borderColor: 'rgba(255,255,255,0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  progressNumber: {
-    fontSize: 48,
-    fontWeight: '300',
-    color: '#FFFFFF',
-  },
-  progressPercent: {
-    fontSize: 19,
-    color: '#D7F3E2',
-    marginTop: 13,
+    alignItems: 'flex-start',
+    gap: 24,
+    marginTop: 28,
   },
   balanceBlock: {
     flex: 1,
+  },
+  balanceHighlight: {
+    flex: 1.4,
+    marginTop: 8,
+  },
+  walletMetaBlock: {
+    flex: 1,
+    alignItems: 'flex-start',
   },
   walletTypeRow: {
     flexDirection: 'row',
@@ -133,18 +116,38 @@ export const styles = StyleSheet.create({
     color: '#BFEACD',
   },
   balanceLabel: {
-    fontSize: 13,
+    marginTop: 4,
+    fontSize: 12,
     fontWeight: '900',
     color: '#9CD1AE',
   },
   balanceValue: {
     marginTop: 4,
-    fontSize: 23,
+    fontSize: 41,
     fontWeight: '900',
     color: '#FFCD24',
   },
+  walletMetricRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 22,
+    marginTop: 16,
+  },
+  walletMetric: {
+    marginTop: 12,
+  },
+  incomeLabel: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#9CD1AE',
+  },
+  incomeValue: {
+    marginTop: 4,
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#79F4A6',
+  },
   spentLabel: {
-    marginTop: 14,
     fontSize: 13,
     fontWeight: '900',
     color: '#9CD1AE',

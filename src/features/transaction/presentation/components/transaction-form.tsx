@@ -187,6 +187,24 @@ export function TransactionForm({
     return () => clearTimeout(timeout)
   }, [amountFocused])
 
+  useEffect(() => {
+    if (wallets.length === 0) {
+      return
+    }
+
+    if (!wallets.some((wallet) => wallet.id === expenseWallet)) {
+      setExpenseWallet(wallets[0].id)
+    }
+
+    if (!wallets.some((wallet) => wallet.id === transferFromWallet)) {
+      setTransferFromWallet(wallets[0].id)
+    }
+
+    if (!wallets.some((wallet) => wallet.id === transferToWallet)) {
+      setTransferToWallet(wallets[1]?.id ?? wallets[0].id)
+    }
+  }, [expenseWallet, transferFromWallet, transferToWallet, wallets])
+
   const adjustAmount = (delta: number) => {
     const numericAmount = Number.parseInt(amount || '0', 10)
     const nextAmount = Math.max(0, numericAmount + delta)
@@ -208,6 +226,16 @@ export function TransactionForm({
       return
     }
 
+    if (wallets.length === 0) {
+      Alert.alert('Chưa có ví', 'Bạn hãy tạo ví trước khi lưu giao dịch.')
+      return
+    }
+
+    if (mode === 'expense' && !selectedCategory?.id) {
+      Alert.alert('Thiếu danh mục', 'Bạn hãy chọn danh mục từ dữ liệu database.')
+      return
+    }
+
     const normalizedDate = normalizeDate(transactionDate)
 
     if (!normalizedDate) {
@@ -224,6 +252,7 @@ export function TransactionForm({
       expenseWallet,
       expenseWalletTypeLabel: expenseWalletType,
       expenseCategory,
+      categoryId: selectedCategory?.id,
       categoryIcon:
         (selectedCategory?.icon as TransactionItem['icon'] | undefined) ??
         getCategoryIcon(expenseCategory),

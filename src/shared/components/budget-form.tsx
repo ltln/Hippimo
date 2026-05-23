@@ -41,7 +41,8 @@ const periodOptions = [
 ]
 
 const buildDefaultTitle = (categoryName: string, period: BudgetPeriod) => {
-  return `${categoryName} ${period === 'weekly' ? 'hàng tuần' : 'hàng tháng'}`
+  if (period === 'weekly') return `${categoryName} hàng tuần`
+  return `${categoryName} hàng tháng`
 }
 
 const isValidDateOnly = (value: string) => {
@@ -65,7 +66,8 @@ const normalizeBudgetStartDate = (value: string, period: BudgetPeriod) => {
 
   const normalized = normalizeDate(trimmed)
   if (normalized) {
-    return period === 'monthly' ? `${normalized.iso.slice(0, 7)}-01` : normalized.iso
+    if (period === 'monthly') return `${normalized.iso.slice(0, 7)}-01`
+    return normalized.iso
   }
 
   const match = /^([0-9]{4})-([0-9]{2})(?:-([0-9]{2}))?$/.exec(trimmed)
@@ -91,6 +93,33 @@ const buildWeekEndDate = (start: string) => {
   end.setDate(date.getDate() + 6)
   return end.toISOString().split('T')[0]
 }
+
+const padDatePart = (value: number) => String(value).padStart(2, '0')
+
+const getDateParts = (value: string) => {
+  const normalized =
+    normalizeBudgetStartDate(value, 'weekly') ?? new Date().toISOString().split('T')[0]
+  const [year, month, day] = normalized.split('-').map(Number)
+
+  return { year, month, day }
+}
+
+const getDaysInMonth = (year: number, month: number) => new Date(year, month, 0).getDate()
+
+const buildStartDate = (year: number, month: number, day: number) => {
+  const maxDay = getDaysInMonth(year, month)
+  const safeDay = Math.min(day, maxDay)
+  return `${year}-${padDatePart(month)}-${padDatePart(safeDay)}`
+}
+
+const formatBudgetDate = (value: string, period: BudgetPeriod) => {
+  const { year, month, day } = getDateParts(value)
+  if (period === 'weekly') return `${padDatePart(day)}/${padDatePart(month)}/${year}`
+  return `Tháng ${padDatePart(month)}/${year}`
+}
+
+const monthLabels = Array.from({ length: 12 }, (_, index) => `Tháng ${padDatePart(index + 1)}`)
+const weekDayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
 
 type BudgetFormProps = {
   title: string
@@ -123,30 +152,41 @@ export function BudgetForm({
   const [amount, setAmount] = useState(String(initialValues?.amount || '0'))
   const [period, setPeriod] = useState<BudgetPeriod>(initialValues?.period || 'weekly')
   const [category, setCategory] = useState(initialValues?.category || 'Ăn uống')
+  const [selectedCategoryId, setSelectedCategoryId] = useState(initialValues?.categoryId)
   const [startDate, setStartDate] = useState(
     initialValues?.startDate || new Date().toISOString().split('T')[0],
   )
   const [openDropdown, setOpenDropdown] = useState<null | 'period' | 'category'>(null)
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
   const categoryOptions = useMemo(() => {
     const options = mapCategoriesToOptions(categories)
+    if (accessToken) {
+      return options
+    }
+
     return options.length ? options : defaultCategoryOptions
-  }, [categories])
+  }, [accessToken, categories])
 
   const selectedCategory = useMemo(() => {
     if (!categoryOptions.length) {
       return undefined
     }
 
-    return categoryOptions.find((option) => option.value === category) ?? categoryOptions[0]
-  }, [category, categoryOptions])
+    return (
+      categoryOptions.find((option) => option.id && option.id === selectedCategoryId) ??
+      categoryOptions.find((option) => option.value === category) ??
+      categoryOptions[0]
+    )
+  }, [category, categoryOptions, selectedCategoryId])
 
   useEffect(() => {
     if (!initialValues?.category && categoryOptions.length) {
       const hasCategory = categoryOptions.some((option) => option.value === category)
       if (!hasCategory) {
         setCategory(categoryOptions[0].value)
+        setSelectedCategoryId(categoryOptions[0].id || undefined)
       }
     }
   }, [category, categoryOptions, initialValues?.category])
@@ -159,18 +199,10 @@ export function BudgetForm({
     if (selectedCategory.value !== category) {
       setCategory(selectedCategory.value)
     }
-  }, [category, selectedCategory])
-
-  useEffect(() => {
-    if (!initialValues?.categoryId || !categoryOptions.length) {
-      return
+    if (selectedCategory.id && selectedCategory.id !== selectedCategoryId) {
+      setSelectedCategoryId(selectedCategory.id)
     }
-
-    const matchedById = categoryOptions.find((option) => option.id === initialValues.categoryId)
-    if (matchedById && matchedById.value !== category) {
-      setCategory(matchedById.value)
-    }
-  }, [category, categoryOptions, initialValues?.categoryId])
+  }, [category, selectedCategory, selectedCategoryId])
 
   const autoEndDate = useMemo(() => {
     if (period !== 'weekly') return ''
@@ -205,13 +237,30 @@ export function BudgetForm({
       return
     }
 
-    const resolvedCategoryId =
+    let resolvedCategoryId =
+      selectedCategoryId ||
       selectedCategory?.id ||
       categories.find((item) => item.name === category)?.categoryId ||
       initialValues?.categoryId
 
     if (accessToken && !resolvedCategoryId && refresh) {
-      refresh()
+      try {
+        await refresh()
+        resolvedCategoryId =
+          selectedCategoryId ||
+          selectedCategory?.id ||
+          categories.find((item) => item.name === category)?.categoryId ||
+          initialValues?.categoryId
+      } catch (error) {
+        console.error('Refresh categories before saving budget failed', error)
+      }
+    }
+
+    if (accessToken && !resolvedCategoryId) {
+      const message = 'Vui lÃ²ng chá»n danh má»¥c há»£p lá»‡ trÆ°á»›c khi lÆ°u ngÃ¢n sÃ¡ch'
+      setFormError(message)
+      Alert.alert('ThÃ´ng bÃ¡o', message)
+      return
     }
 
     const resolvedIcon =
@@ -299,30 +348,16 @@ export function BudgetForm({
               <Ionicons name='chevron-down' size={16} color='#FFF' />
             </Pressable>
 
-            <View style={{ width: 10 }} />
+            <View style={styles.dateDisplayGroup}>
+              <Text style={styles.dateDisplayText}>{formatBudgetDate(startDate, period)}</Text>
+              {period === 'weekly' ? (
+                <Text style={styles.endDateText}>Đến {autoEndDate}</Text>
+              ) : null}
+            </View>
 
-            {period === 'weekly' ? (
-              <View style={styles.weekInputs}>
-                <TextInput
-                  value={startDate}
-                  onChangeText={setStartDate}
-                  style={styles.smallInput}
-                  placeholder='Bắt đầu'
-                />
-                <TextInput
-                  value={autoEndDate}
-                  editable={false}
-                  style={[styles.smallInput, { opacity: 0.6 }]}
-                />
-              </View>
-            ) : (
-              <TextInput
-                value={startDate.substring(0, 7)}
-                onChangeText={(v) => setStartDate(`${v}-01`)}
-                style={[styles.input, { flex: 1.5 }]}
-                placeholder='YYYY-MM'
-              />
-            )}
+            <Pressable style={styles.calendarButton} onPress={() => setIsCalendarOpen(true)}>
+              <Ionicons name='calendar-outline' size={22} color='#FFFFFF' />
+            </Pressable>
           </View>
         </View>
 
@@ -333,7 +368,8 @@ export function BudgetForm({
         ) : null}
 
         <Pressable
-          style={[styles.saveButton, isLoadingCategories ? { opacity: 0.6 } : null]}
+          disabled={Boolean(accessToken && isLoadingCategories)}
+          style={[styles.saveButton, accessToken && isLoadingCategories ? { opacity: 0.6 } : null]}
           onPress={handleSave}
         >
           <Text style={styles.saveButtonText}>{submitLabel}</Text>
@@ -357,11 +393,158 @@ export function BudgetForm({
         options={categoryOptions}
         onClose={() => setOpenDropdown(null)}
         onSelect={(v: any) => {
-          setCategory(v)
+          const selectedOption = categoryOptions.find((option) => option.value === v)
+          setCategory(selectedOption?.value ?? v)
+          setSelectedCategoryId(selectedOption?.id || undefined)
           setOpenDropdown(null)
         }}
       />
+
+      <BudgetCalendarModal
+        visible={isCalendarOpen}
+        period={period}
+        selectedDate={startDate}
+        onClose={() => setIsCalendarOpen(false)}
+        onSelect={(date) => {
+          setStartDate(date)
+          setIsCalendarOpen(false)
+        }}
+      />
     </SafeAreaView>
+  )
+}
+
+function BudgetCalendarModal({
+  visible,
+  period,
+  selectedDate,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean
+  period: BudgetPeriod
+  selectedDate: string
+  onClose: () => void
+  onSelect: (date: string) => void
+}) {
+  const selectedParts = getDateParts(selectedDate)
+  const [viewYear, setViewYear] = useState(selectedParts.year)
+  const [viewMonth, setViewMonth] = useState(selectedParts.month)
+
+  useEffect(() => {
+    if (!visible) return
+    const nextParts = getDateParts(selectedDate)
+    setViewYear(nextParts.year)
+    setViewMonth(nextParts.month)
+  }, [selectedDate, visible])
+
+  const moveMonth = (offset: number) => {
+    const nextDate = new Date(viewYear, viewMonth - 1 + offset, 1)
+    setViewYear(nextDate.getFullYear())
+    setViewMonth(nextDate.getMonth() + 1)
+  }
+
+  const firstDay = new Date(viewYear, viewMonth - 1, 1).getDay()
+  const leadingBlankDays = firstDay === 0 ? 6 : firstDay - 1
+  const dayCells: Array<{ key: string; day?: number }> = [
+    ...Array.from({ length: leadingBlankDays }, (_, index) => ({ key: `empty-${index}` })),
+    ...Array.from({ length: getDaysInMonth(viewYear, viewMonth) }, (_, index) => ({
+      key: `day-${index + 1}`,
+      day: index + 1,
+    })),
+  ]
+  return (
+    <Modal visible={visible} transparent animationType='fade'>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable style={styles.calendarCard}>
+          <View style={styles.calendarHeader}>
+            <Pressable
+              style={styles.calendarNavButton}
+              onPress={() => (period === 'weekly' ? moveMonth(-1) : setViewYear(viewYear - 1))}
+            >
+              <Ionicons name='chevron-back' size={20} color='#0B1D17' />
+            </Pressable>
+            <Text style={styles.calendarTitle}>
+              {period === 'weekly' ? `Tháng ${padDatePart(viewMonth)}/${viewYear}` : viewYear}
+            </Text>
+            <Pressable
+              style={styles.calendarNavButton}
+              onPress={() => (period === 'weekly' ? moveMonth(1) : setViewYear(viewYear + 1))}
+            >
+              <Ionicons name='chevron-forward' size={20} color='#0B1D17' />
+            </Pressable>
+          </View>
+
+          {period === 'weekly' ? (
+            <>
+              <View style={styles.weekDayRow}>
+                {weekDayLabels.map((label) => (
+                  <Text key={label} style={styles.weekDayText}>
+                    {label}
+                  </Text>
+                ))}
+              </View>
+              <View style={styles.calendarGrid}>
+                {dayCells.map((cell) =>
+                  typeof cell.day === 'number' ? (
+                    <Pressable
+                      key={cell.key}
+                      style={[
+                        styles.dayCell,
+                        cell.day === selectedParts.day &&
+                        viewMonth === selectedParts.month &&
+                        viewYear === selectedParts.year
+                          ? styles.calendarCellActive
+                          : null,
+                      ]}
+                      onPress={() => onSelect(buildStartDate(viewYear, viewMonth, cell.day ?? 1))}
+                    >
+                      <Text
+                        style={[
+                          styles.dayCellText,
+                          cell.day === selectedParts.day &&
+                          viewMonth === selectedParts.month &&
+                          viewYear === selectedParts.year
+                            ? styles.calendarCellTextActive
+                            : null,
+                        ]}
+                      >
+                        {cell.day}
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <View key={cell.key} style={styles.dayCell} />
+                  ),
+                )}
+              </View>
+            </>
+          ) : (
+            <View style={styles.monthGrid}>
+              {monthLabels.map((label, index) => {
+                const month = index + 1
+                const isActive = month === selectedParts.month && viewYear === selectedParts.year
+                return (
+                  <Pressable
+                    key={label}
+                    style={[styles.monthCell, isActive ? styles.calendarCellActive : null]}
+                    onPress={() => onSelect(buildStartDate(viewYear, month, 1))}
+                  >
+                    <Text
+                      style={[
+                        styles.monthCellText,
+                        isActive ? styles.calendarCellTextActive : null,
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
   )
 }
 
@@ -422,7 +605,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  row: { flexDirection: 'row', alignItems: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   periodSelector: {
     flex: 1,
     flexDirection: 'row',
@@ -433,7 +616,35 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   selectorValue: { color: '#FFFFFF', fontWeight: '700' },
-  weekInputs: { flex: 2, flexDirection: 'row', gap: 6 },
+  dateDisplayGroup: {
+    flex: 1.5,
+    minHeight: 44,
+    backgroundColor: '#063629',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    justifyContent: 'center',
+  },
+  dateDisplayText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  calendarButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#063629',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  endDateText: {
+    color: '#D7F3E2',
+    fontSize: 11,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
   smallInput: {
     flex: 1,
     backgroundColor: '#063629',
@@ -466,6 +677,81 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20 },
+  calendarCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 18,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  calendarTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0B1D17',
+  },
+  calendarNavButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EEF2EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekDayRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  weekDayText: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#49685B',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  dayCell: {
+    width: '14.2857%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  dayCellText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0B1D17',
+  },
+  monthGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  monthCell: {
+    width: '31%',
+    minHeight: 48,
+    borderRadius: 12,
+    backgroundColor: '#EEF2EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthCellText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0B1D17',
+  },
+  calendarCellActive: {
+    backgroundColor: '#198B3F',
+  },
+  calendarCellTextActive: {
+    color: '#FFFFFF',
+  },
   modalTitle: {
     fontSize: 18,
     fontWeight: '900',

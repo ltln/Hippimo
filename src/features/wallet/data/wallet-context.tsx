@@ -1,6 +1,15 @@
 import type { ComponentProps, PropsWithChildren } from 'react'
-import { createContext, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+
+import { useAuth } from '@/features/auth/data/auth-context'
+import {
+  createWallet,
+  deleteWallet as deleteWalletFromApi,
+  listWallets,
+  updateWallet as updateWalletFromApi,
+} from '@/features/wallet/data/wallet-api'
+import type { ApiWalletType, Wallet } from '@/features/wallet/domain/wallet.types'
 
 export type WalletType = 'cash' | 'bank' | 'saving' | 'digital'
 
@@ -23,36 +32,105 @@ export const walletTypes: {
   { type: 'digital', label: 'VÍ ĐIỆN TỬ', icon: 'wallet' },
 ]
 
-const initialWallets: WalletItem[] = [
-  { id: 'cash-main', name: 'Ví 1', type: 'cash', balance: 400000, spent: 1000000 },
-  { id: 'bank-main', name: 'Ví 2', type: 'bank', balance: 2300000, spent: 750000 },
-  { id: 'saving-main', name: 'Ví 3', type: 'saving', balance: 1500000, spent: 250000 },
-  { id: 'momo-main', name: 'Ví 4', type: 'digital', balance: 620000, spent: 380000 },
-]
-
 type WalletContextValue = {
   wallets: WalletItem[]
-  addWallet: (wallet: WalletItem) => void
-  updateWallet: (wallet: WalletItem) => void
-  deleteWallet: (id: string) => void
+  addWallet: (wallet: WalletItem) => Promise<void>
+  updateWallet: (wallet: WalletItem) => Promise<void>
+  deleteWallet: (id: string) => Promise<void>
   getWalletById: (id: string | undefined) => WalletItem | undefined
   getWalletByName: (name: string | undefined) => WalletItem | undefined
+  refreshWallets: () => Promise<void>
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null)
 
 export function WalletProvider({ children }: PropsWithChildren) {
-  const [wallets, setWallets] = useState(initialWallets)
+  const { authResponse } = useAuth()
+  const accessToken = authResponse?.tokens.accessToken
+  const [wallets, setWallets] = useState<WalletItem[]>([])
 
-  const addWallet = (wallet: WalletItem) => {
-    setWallets((current) => [wallet, ...current])
+  const requireAccessToken = useCallback(() => {
+    if (!accessToken) {
+      throw new Error('Bạn cần đăng nhập để thao tác với ví.')
+    }
+
+    return accessToken
+  }, [accessToken])
+
+  const refreshWallets = useCallback(async () => {
+    if (!accessToken) {
+      setWallets([])
+      return
+    }
+
+    const data = await listWallets(accessToken)
+    setWallets(data.map(mapWalletFromApi))
+  }, [accessToken])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadWallets = async () => {
+      if (!accessToken) {
+        setWallets([])
+        return
+      }
+
+      try {
+        const data = await listWallets(accessToken)
+
+        if (isMounted) {
+          setWallets(data.map(mapWalletFromApi))
+        }
+      } catch (error) {
+        console.error('Load wallets failed', error)
+
+        if (isMounted) {
+          setWallets([])
+        }
+      }
+    }
+
+    loadWallets()
+
+    return () => {
+      isMounted = false
+    }
+  }, [accessToken])
+
+  const addWallet = async (wallet: WalletItem) => {
+    const token = requireAccessToken()
+    const createdWallet = await createWallet(
+      {
+        name: wallet.name,
+        type: mapWalletTypeToApi(wallet.type),
+        balance: wallet.balance,
+      },
+      token,
+    )
+
+    setWallets((current) => [mapWalletFromApi(createdWallet), ...current])
   }
 
-  const updateWallet = (wallet: WalletItem) => {
-    setWallets((current) => current.map((item) => (item.id === wallet.id ? wallet : item)))
+  const updateWallet = async (wallet: WalletItem) => {
+    const token = requireAccessToken()
+    const updatedWallet = await updateWalletFromApi(
+      wallet.id,
+      {
+        name: wallet.name,
+        type: mapWalletTypeToApi(wallet.type),
+      },
+      token,
+    )
+
+    setWallets((current) =>
+      current.map((item) => (item.id === wallet.id ? mapWalletFromApi(updatedWallet) : item)),
+    )
   }
 
-  const deleteWallet = (id: string) => {
+  const deleteWallet = async (id: string) => {
+    const token = requireAccessToken()
+    await deleteWalletFromApi(id, token)
     setWallets((current) => current.filter((wallet) => wallet.id !== id))
   }
 
@@ -71,11 +149,61 @@ export function WalletProvider({ children }: PropsWithChildren) {
 
   return (
     <WalletContext.Provider
-      value={{ wallets, addWallet, updateWallet, deleteWallet, getWalletById, getWalletByName }}
+      value={{
+        wallets,
+        addWallet,
+        updateWallet,
+        deleteWallet,
+        getWalletById,
+        getWalletByName,
+        refreshWallets,
+      }}
     >
       {children}
     </WalletContext.Provider>
   )
+}
+
+function mapWalletFromApi(wallet: Wallet): WalletItem {
+  const balance = Number(wallet.balance)
+
+  return {
+    id: wallet.walletId,
+    name: wallet.name,
+    type: mapWalletTypeFromApi(wallet.type),
+    balance: Number.isNaN(balance) ? 0 : balance,
+    spent: 0,
+  }
+}
+
+function mapWalletTypeToApi(type: WalletType): ApiWalletType {
+  switch (type) {
+    case 'bank':
+      return 'BANK_ACCOUNT'
+    case 'saving':
+      return 'SAVINGS'
+    case 'digital':
+      return 'E_WALLET'
+    case 'cash':
+    default:
+      return 'CASH'
+  }
+}
+
+function mapWalletTypeFromApi(type: ApiWalletType): WalletType {
+  switch (type) {
+    case 'BANK_ACCOUNT':
+    case 'CREDIT_CARD':
+      return 'bank'
+    case 'SAVINGS':
+      return 'saving'
+    case 'E_WALLET':
+      return 'digital'
+    case 'CASH':
+    case 'OTHER':
+    default:
+      return 'cash'
+  }
 }
 
 export function useWallets() {

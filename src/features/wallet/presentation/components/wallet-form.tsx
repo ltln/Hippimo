@@ -22,6 +22,7 @@ type WalletFormProps = {
 export function WalletForm({ title, submitLabel, initialWallet, onSubmit }: WalletFormProps) {
   const insets = useSafeAreaInsets()
   const amountInputRef = useRef<TextInput>(null)
+  const isEditing = Boolean(initialWallet)
   const [name, setName] = useState(initialWallet?.name ?? '')
   const [type, setType] = useState<WalletType>(initialWallet?.type ?? 'cash')
   const [balance, setBalance] = useState(String(initialWallet?.balance ?? 400000))
@@ -116,32 +117,39 @@ export function WalletForm({ title, submitLabel, initialWallet, onSubmit }: Wall
 
         <View style={[styles.card, styles.amountCard]}>
           <Text style={styles.sectionTitle}>SỐ DƯ BAN ĐẦU</Text>
-          <View style={styles.amountControls}>
-            <Pressable style={styles.amountButton} onPress={() => adjustBalance(-1000)}>
-              <Ionicons name='remove' size={26} color='#FF5148' />
-            </Pressable>
-
-            <Pressable style={styles.amountCenter} onPress={() => setBalanceFocused(true)}>
-              {balanceFocused ? (
-                <TextInput
-                  ref={amountInputRef}
-                  value={balance}
-                  onChangeText={(value) => setBalance(value.replace(/[^0-9]/g, ''))}
-                  keyboardType='numeric'
-                  onFocus={() => setBalanceFocused(true)}
-                  onBlur={() => setBalanceFocused(false)}
-                  style={styles.amountInput}
-                />
-              ) : (
-                <Text style={styles.amountDisplay}>{displayBalance}</Text>
-              )}
+          {isEditing ? (
+            <View style={styles.amountCenter}>
+              <Text style={styles.amountDisplay}>{displayBalance}</Text>
               <Text style={styles.amountCurrency}>VND</Text>
-            </Pressable>
+            </View>
+          ) : (
+            <View style={styles.amountControls}>
+              <Pressable style={styles.amountButton} onPress={() => adjustBalance(-1000)}>
+                <Ionicons name='remove' size={26} color='#FF5148' />
+              </Pressable>
 
-            <Pressable style={styles.amountButton} onPress={() => adjustBalance(1000)}>
-              <Ionicons name='add' size={28} color='#F6C63D' />
-            </Pressable>
-          </View>
+              <Pressable style={styles.amountCenter} onPress={() => setBalanceFocused(true)}>
+                {balanceFocused ? (
+                  <TextInput
+                    ref={amountInputRef}
+                    value={balance}
+                    onChangeText={(value) => setBalance(value.replace(/[^0-9]/g, ''))}
+                    keyboardType='numeric'
+                    onFocus={() => setBalanceFocused(true)}
+                    onBlur={() => setBalanceFocused(false)}
+                    style={styles.amountInput}
+                  />
+                ) : (
+                  <Text style={styles.amountDisplay}>{displayBalance}</Text>
+                )}
+                <Text style={styles.amountCurrency}>VND</Text>
+              </Pressable>
+
+              <Pressable style={styles.amountButton} onPress={() => adjustBalance(1000)}>
+                <Ionicons name='add' size={28} color='#F6C63D' />
+              </Pressable>
+            </View>
+          )}
         </View>
 
         <Pressable style={styles.saveButton} onPress={handleSave}>

@@ -59,6 +59,7 @@ export function buildTransaction({
   expenseWallet,
   expenseWalletTypeLabel,
   expenseCategory,
+  categoryId,
   categoryIcon,
   categoryColor,
   transferFromWallet,
@@ -73,6 +74,7 @@ export function buildTransaction({
   expenseWallet: string
   expenseWalletTypeLabel?: string
   expenseCategory: string
+  categoryId?: string
   categoryIcon?: TransactionItem['icon']
   categoryColor?: string | null
   transferFromWallet: string
@@ -128,6 +130,7 @@ export function buildTransaction({
     icon: categoryIcon ?? getCategoryIcon(expenseCategory),
     iconBackground: categoryColor ?? getCategoryColor(expenseCategory),
     type: 'expense',
+    categoryId,
     walletId: expenseWalletItem?.id,
     detail: {
       amountDisplay: `-${formattedAmount}`,

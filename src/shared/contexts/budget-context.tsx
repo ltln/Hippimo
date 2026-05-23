@@ -1,6 +1,8 @@
 import type { ComponentProps, PropsWithChildren } from 'react'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+import * as SecureStore from 'expo-secure-store'
+import { Platform } from 'react-native'
 
 import type {
   Budget,
@@ -38,6 +40,7 @@ type BudgetContextValue = {
   addBudget: (budget: BudgetItem) => Promise<void>
   updateBudget: (budget: BudgetItem) => Promise<void>
   deleteBudget: (id: string) => Promise<void>
+  refreshBudgets: () => Promise<void>
 }
 
 const initialBudgets: BudgetItem[] = [
@@ -68,9 +71,75 @@ const initialBudgets: BudgetItem[] = [
 
 const BudgetContext = createContext<BudgetContextValue | null>(null)
 
+const BUDGET_TITLES_KEY = 'hippimo.budget.titles.v1'
+
+const memoryBudgetTitleStore = new Map<string, string>()
+
+const getBudgetTitlesStorageKey = (userId?: string) =>
+  userId ? `${BUDGET_TITLES_KEY}.${userId}` : BUDGET_TITLES_KEY
+
+const canUseLocalStorage = () =>
+  Platform.OS === 'web' && typeof globalThis.localStorage !== 'undefined'
+
+const getStorageValue = async (key: string) => {
+  if (canUseLocalStorage()) {
+    return globalThis.localStorage.getItem(key)
+  }
+
+  if (await SecureStore.isAvailableAsync()) {
+    return SecureStore.getItemAsync(key)
+  }
+
+  return memoryBudgetTitleStore.get(key) ?? null
+}
+
+const setStorageValue = async (key: string, value: string) => {
+  if (canUseLocalStorage()) {
+    globalThis.localStorage.setItem(key, value)
+    return
+  }
+
+  if (await SecureStore.isAvailableAsync()) {
+    await SecureStore.setItemAsync(key, value)
+    return
+  }
+
+  memoryBudgetTitleStore.set(key, value)
+}
+
+async function getStoredBudgetTitles(storageKey: string): Promise<Record<string, string>> {
+  const storedValue = await getStorageValue(storageKey)
+
+  if (!storedValue) {
+    return {}
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(storedValue)
+
+    if (!parsed || typeof parsed !== 'object') {
+      return {}
+    }
+
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        (entry): entry is [string, string] =>
+          typeof entry[0] === 'string' && typeof entry[1] === 'string',
+      ),
+    )
+  } catch (error) {
+    console.error('Failed to parse stored budget titles', error)
+    return {}
+  }
+}
+
+async function setStoredBudgetTitles(storageKey: string, titles: Record<string, string>) {
+  const serializedTitles = JSON.stringify(titles)
+  await setStorageValue(storageKey, serializedTitles)
+}
+
 const mapApiPeriodToBudgetPeriod = (period: BudgetPeriodType): BudgetPeriod => {
   if (period === 'WEEK') return 'weekly'
-  if (period === 'MONTH') return 'monthly'
   return 'monthly'
 }
 
@@ -96,7 +165,8 @@ const toNumber = (value: unknown) => {
 }
 
 const buildBudgetTitle = (categoryName: string, period: BudgetPeriod) => {
-  return `${categoryName} ${period === 'weekly' ? 'hàng tuần' : 'hàng tháng'}`
+  if (period === 'weekly') return `${categoryName} hàng tuần`
+  return `${categoryName} hàng tháng`
 }
 
 type CategorySummary = {
@@ -105,7 +175,20 @@ type CategorySummary = {
   color?: string | null
 }
 
-const mapApiBudgetToBudgetItem = (budget: Budget, category?: CategorySummary) => {
+const getAuthUserId = (user: unknown) => {
+  if (!user || typeof user !== 'object' || !('userId' in user)) {
+    return undefined
+  }
+
+  const userId = (user as { userId?: unknown }).userId
+  return typeof userId === 'string' ? userId : undefined
+}
+
+const mapApiBudgetToBudgetItem = (
+  budget: Budget,
+  category?: CategorySummary,
+  titleOverride?: string,
+) => {
   const period = mapApiPeriodToBudgetPeriod(budget.periodType)
   const categoryName = category?.name ?? 'Danh mục'
   const startDate = normalizeDateOnly(budget.periodStart)
@@ -113,7 +196,7 @@ const mapApiBudgetToBudgetItem = (budget: Budget, category?: CategorySummary) =>
 
   return {
     id: budget.budgetId,
-    title: buildBudgetTitle(categoryName, period),
+    title: titleOverride?.trim() || buildBudgetTitle(categoryName, period),
     amount: toNumber(budget.amountLimit),
     spent: toNumber(budget.spentAmount ?? 0),
     period,
@@ -129,9 +212,12 @@ const mapApiBudgetToBudgetItem = (budget: Budget, category?: CategorySummary) =>
 export function BudgetProvider({ children }: PropsWithChildren) {
   const { authResponse } = useAuth()
   const accessToken = authResponse?.tokens.accessToken
+  const storageKey = getBudgetTitlesStorageKey(getAuthUserId(authResponse?.user))
   const { categories } = useCategories({ type: 'EXPENSE', status: 'ACTIVE' })
   const [apiBudgets, setApiBudgets] = useState<Budget[]>([])
   const [budgets, setBudgets] = useState<BudgetItem[]>(initialBudgets)
+  const [titleOverrides, setTitleOverrides] = useState<Record<string, string>>({})
+  const titleOverridesRef = useRef(titleOverrides)
 
   const categoryById = useMemo(() => {
     return new Map(categories.map((category) => [category.categoryId, category]))
@@ -145,6 +231,60 @@ export function BudgetProvider({ children }: PropsWithChildren) {
     const data = await listBudgets(accessToken)
     setApiBudgets(data)
   }, [accessToken])
+
+  useEffect(() => {
+    titleOverridesRef.current = titleOverrides
+  }, [titleOverrides])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadStoredTitles = async () => {
+      const storedTitles = await getStoredBudgetTitles(storageKey)
+
+      if (Object.keys(storedTitles).length || storageKey === BUDGET_TITLES_KEY) {
+        return storedTitles
+      }
+
+      return getStoredBudgetTitles(BUDGET_TITLES_KEY)
+    }
+
+    loadStoredTitles()
+      .then((storedTitles) => {
+        if (isMounted) {
+          titleOverridesRef.current = storedTitles
+          setTitleOverrides(storedTitles)
+        }
+      })
+      .catch((error) => console.error('Failed to load budget titles', error))
+
+    return () => {
+      isMounted = false
+    }
+  }, [storageKey])
+
+  const saveBudgetTitleOverride = useCallback(
+    async (id: string, title?: string) => {
+      const normalizedTitle = title?.trim()
+      const nextTitles = { ...titleOverridesRef.current }
+
+      if (normalizedTitle) {
+        nextTitles[id] = normalizedTitle
+      } else {
+        delete nextTitles[id]
+      }
+
+      titleOverridesRef.current = nextTitles
+      setTitleOverrides(nextTitles)
+
+      try {
+        await setStoredBudgetTitles(storageKey, nextTitles)
+      } catch (error) {
+        console.error('Failed to save budget title', error)
+      }
+    },
+    [storageKey],
+  )
 
   useEffect(() => {
     if (!accessToken) {
@@ -187,15 +327,23 @@ export function BudgetProvider({ children }: PropsWithChildren) {
     }
 
     const mapped = apiBudgets.map((budget) =>
-      mapApiBudgetToBudgetItem(budget, categoryById.get(budget.categoryId)),
+      mapApiBudgetToBudgetItem(
+        budget,
+        categoryById.get(budget.categoryId),
+        titleOverridesRef.current[budget.budgetId] ?? titleOverrides[budget.budgetId],
+      ),
     )
     setBudgets(mapped)
-  }, [accessToken, apiBudgets, categoryById])
+  }, [accessToken, apiBudgets, categoryById, titleOverrides])
 
   const addBudget = async (budget: BudgetItem) => {
-    if (!accessToken || !budget.categoryId) {
+    if (!accessToken) {
       setBudgets((current) => [budget, ...current])
       return
+    }
+
+    if (!budget.categoryId) {
+      throw new Error('Vui lÃ²ng chá»n danh má»¥c há»£p lá»‡ trÆ°á»›c khi lÆ°u ngÃ¢n sÃ¡ch')
     }
 
     const payload: CreateBudgetDto = {
@@ -212,6 +360,8 @@ export function BudgetProvider({ children }: PropsWithChildren) {
       throw new Error('Invalid budget response')
     }
 
+    await saveBudgetTitleOverride(created.budgetId, budget.title)
+
     try {
       await fetchBudgets()
     } catch (error) {
@@ -221,9 +371,13 @@ export function BudgetProvider({ children }: PropsWithChildren) {
   }
 
   const updateBudget = async (budget: BudgetItem) => {
-    if (!accessToken || !budget.categoryId) {
+    if (!accessToken) {
       setBudgets((current) => current.map((item) => (item.id === budget.id ? budget : item)))
       return
+    }
+
+    if (!budget.categoryId) {
+      throw new Error('Vui lÃ²ng chá»n danh má»¥c há»£p lá»‡ trÆ°á»›c khi lÆ°u ngÃ¢n sÃ¡ch')
     }
 
     const updated = await updateBudgetApi(
@@ -242,6 +396,8 @@ export function BudgetProvider({ children }: PropsWithChildren) {
       throw new Error('Invalid budget response')
     }
 
+    await saveBudgetTitleOverride(updated.budgetId, budget.title)
+
     try {
       await fetchBudgets()
     } catch (error) {
@@ -259,11 +415,14 @@ export function BudgetProvider({ children }: PropsWithChildren) {
     }
 
     await deleteBudgetApi(id, accessToken)
+    await saveBudgetTitleOverride(id)
     setApiBudgets((current) => current.filter((budget) => budget.budgetId !== id))
   }
 
   return (
-    <BudgetContext.Provider value={{ budgets, addBudget, updateBudget, deleteBudget }}>
+    <BudgetContext.Provider
+      value={{ budgets, addBudget, updateBudget, deleteBudget, refreshBudgets: fetchBudgets }}
+    >
       {children}
     </BudgetContext.Provider>
   )

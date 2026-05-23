@@ -36,11 +36,16 @@ export default function EditTransactionScreen() {
       submitLabel='CẬP NHẬT GIAO DỊCH'
       initialValues={getTransactionFormValues(transaction, wallets)}
       transactionId={transaction.id}
-      onSubmit={(updatedTransaction) => {
-        updateTransaction(updatedTransaction)
-        Alert.alert('Đã cập nhật', 'Thông tin giao dịch đã được cập nhật.', [
-          { text: 'OK', onPress: () => router.back() },
-        ])
+      onSubmit={async (updatedTransaction) => {
+        try {
+          await updateTransaction(updatedTransaction)
+          router.replace('/(tabs)/transaction')
+        } catch (error) {
+          Alert.alert(
+            'Không cập nhật được giao dịch',
+            error instanceof Error ? error.message : 'Vui lòng thử lại.',
+          )
+        }
       }}
     />
   )

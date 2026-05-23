@@ -24,8 +24,8 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AuthProvider>
           <WalletProvider>
-            <TransactionProvider>
-              <BudgetProvider>
+            <BudgetProvider>
+              <TransactionProvider>
                 <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                   <AuthGate>
                     <Stack>
@@ -47,8 +47,8 @@ export default function RootLayout() {
                   </AuthGate>
                   <StatusBar style='auto' />
                 </ThemeProvider>
-              </BudgetProvider>
-            </TransactionProvider>
+              </TransactionProvider>
+            </BudgetProvider>
           </WalletProvider>
         </AuthProvider>
       </SafeAreaProvider>

@@ -8,7 +8,6 @@ import {
   type WalletItem,
 } from '@/features/wallet/data/wallet-context'
 import type { TransactionItem } from '@/features/transaction/data/transaction-context'
-import { getPercentColor, getTransferWallets } from '@/features/wallet/utils/wallet-utils'
 import { styles } from '@/features/wallet/presentation/wallet.styles'
 
 export function WalletCard({
@@ -21,9 +20,7 @@ export function WalletCard({
   onDelete: () => void
 }) {
   const walletType = getWalletTypeMeta(wallet.type)
-  const total = wallet.balance + wallet.spent
-  const percent = total > 0 ? Math.round((wallet.balance / total) * 100) : 0
-  const percentColor = getPercentColor(percent)
+  const totals = getWalletTransactionTotals(transactions, wallet.id)
 
   return (
     <View style={styles.walletCard}>
@@ -44,30 +41,33 @@ export function WalletCard({
       </View>
 
       <View style={styles.walletSummary}>
-        <View style={styles.progressWrap}>
-          <View style={[styles.progressRing, { borderColor: percentColor }]}>
-            <Text style={[styles.progressNumber, { color: percentColor }]}>{percent}</Text>
-            <Text style={[styles.progressPercent, { color: percentColor }]}>%</Text>
-          </View>
+        <View style={styles.balanceHighlight}>
+          <Text style={styles.balanceLabel}>SỐ DƯ HIỆN TẠI</Text>
+          <Text style={styles.balanceValue}>{formatVnd(wallet.balance)}</Text>
         </View>
 
-        <View style={styles.balanceBlock}>
+        <View style={styles.walletMetaBlock}>
           <View style={styles.walletTypeRow}>
             <View style={styles.walletTypeIcon}>
               <MaterialCommunityIcons name={walletType.icon} size={20} color='#BFEACD' />
             </View>
             <Text style={styles.walletTypeLabel}>{walletType.label}</Text>
           </View>
-          <Text style={styles.balanceLabel}>CÒN LẠI</Text>
-          <Text style={styles.balanceValue}>{formatVnd(wallet.balance)}</Text>
-          <Text style={styles.spentLabel}>ĐÃ SỬ DỤNG</Text>
-          <Text style={styles.spentValue}>{formatVnd(wallet.spent)}</Text>
+
+          <View style={styles.walletMetric}>
+            <Text style={styles.incomeLabel}>TỔNG THU</Text>
+            <Text style={styles.incomeValue}>{formatVnd(totals.income)}</Text>
+          </View>
+          <View style={styles.walletMetric}>
+            <Text style={styles.spentLabel}>TỔNG CHI</Text>
+            <Text style={styles.spentValue}>{formatVnd(totals.expense)}</Text>
+          </View>
         </View>
       </View>
 
       <Text style={styles.recentTitle}>Giao dịch gần đây</Text>
       {transactions.slice(0, 2).map((transaction) => (
-        <RecentTransaction key={transaction.id} transaction={transaction} />
+        <RecentTransaction key={transaction.id} transaction={transaction} walletId={wallet.id} />
       ))}
       {transactions.length === 0 ? (
         <Text style={styles.emptyText}>Chưa có giao dịch trong ví này.</Text>
@@ -76,8 +76,44 @@ export function WalletCard({
   )
 }
 
-function RecentTransaction({ transaction }: { transaction: TransactionItem }) {
-  const transferWallets = getTransferWallets(transaction)
+function getWalletTransactionTotals(transactions: TransactionItem[], walletId: string) {
+  return transactions.reduce(
+    (totals, transaction) => {
+      const amount = Math.abs(transaction.amountValue)
+
+      if (transaction.type === 'transfer') {
+        if (transaction.transferToWalletId === walletId) {
+          totals.income += amount
+        }
+        if (transaction.transferFromWalletId === walletId) {
+          totals.expense += amount
+        }
+        return totals
+      }
+
+      if (transaction.type === 'income') {
+        totals.income += amount
+        return totals
+      }
+
+      totals.expense += amount
+      return totals
+    },
+    { income: 0, expense: 0 },
+  )
+}
+
+function RecentTransaction({
+  transaction,
+  walletId,
+}: {
+  transaction: TransactionItem
+  walletId: string
+}) {
+  const amount =
+    transaction.type === 'transfer'
+      ? `${transaction.transferFromWalletId === walletId ? '-' : '+'}${transaction.amount}`
+      : transaction.amount
 
   return (
     <View style={styles.transactionRow}>
@@ -86,14 +122,9 @@ function RecentTransaction({ transaction }: { transaction: TransactionItem }) {
       </View>
       <View style={styles.transactionMain}>
         <Text style={styles.transactionTitle}>{transaction.title}</Text>
-        {transaction.type === 'transfer' ? (
-          <Text style={styles.transferSubtitle}>
-            {transferWallets.fromWallet} → {transferWallets.toWallet}
-          </Text>
-        ) : null}
       </View>
       <View style={styles.transactionAmountBlock}>
-        <Text style={styles.transactionAmount}>{transaction.amount}</Text>
+        <Text style={styles.transactionAmount}>{amount}</Text>
         <Text style={styles.transactionDate}>{transaction.dateLabel}</Text>
       </View>
     </View>
