@@ -18,6 +18,7 @@ import {
   type CategoryOption,
   useCategories,
 } from '@/features/category/data/use-categories'
+import { createCategory } from '@/features/category/data/category-api'
 import { useAuth } from '@/features/auth/data/auth-context'
 import {
   getCategoryColor,
@@ -159,6 +160,7 @@ export function BudgetForm({
   const [openDropdown, setOpenDropdown] = useState<null | 'period' | 'category'>(null)
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const categoryOptions = useMemo(() => {
     const options = mapCategoriesToOptions(categories)
@@ -212,6 +214,10 @@ export function BudgetForm({
   }, [startDate, period])
 
   const handleSave = async () => {
+    if (isSubmitting) {
+      return
+    }
+
     setFormError(null)
 
     if (!budgetTitle.trim()) {
@@ -245,11 +251,31 @@ export function BudgetForm({
 
     if (accessToken && !resolvedCategoryId && refresh) {
       try {
-        await refresh()
+        const refreshedCategories = await refresh()
+        let refreshedCategory =
+          refreshedCategories.find((item) => item.name === category) ?? refreshedCategories[0]
+
+        if (!refreshedCategory && category.trim()) {
+          refreshedCategory = await createCategory(
+            {
+              name: category.trim(),
+              type: 'EXPENSE',
+              icon: getCategoryIcon(category),
+              color: getCategoryColor(category),
+            },
+            accessToken,
+          )
+        }
+
+        if (refreshedCategory) {
+          setCategory(refreshedCategory.name)
+          setSelectedCategoryId(refreshedCategory.categoryId)
+        }
+
         resolvedCategoryId =
           selectedCategoryId ||
           selectedCategory?.id ||
-          categories.find((item) => item.name === category)?.categoryId ||
+          refreshedCategory?.categoryId ||
           initialValues?.categoryId
       } catch (error) {
         console.error('Refresh categories before saving budget failed', error)
@@ -257,9 +283,9 @@ export function BudgetForm({
     }
 
     if (accessToken && !resolvedCategoryId) {
-      const message = 'Vui lÃ²ng chá»n danh má»¥c há»£p lá»‡ trÆ°á»›c khi lÆ°u ngÃ¢n sÃ¡ch'
+      const message = 'Vui lòng chọn danh mục hợp lệ trước khi lưu ngân sách'
       setFormError(message)
-      Alert.alert('ThÃ´ng bÃ¡o', message)
+      Alert.alert('Thông báo', message)
       return
     }
 
@@ -283,11 +309,14 @@ export function BudgetForm({
       iconColor: resolvedColor,
     }
     try {
+      setIsSubmitting(true)
       await onSubmit(budget)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Vui lòng thử lại sau.'
       setFormError(message)
       Alert.alert('Không thể lưu ngân sách', message)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -368,11 +397,14 @@ export function BudgetForm({
         ) : null}
 
         <Pressable
-          disabled={Boolean(accessToken && isLoadingCategories)}
-          style={[styles.saveButton, accessToken && isLoadingCategories ? { opacity: 0.6 } : null]}
+          disabled={Boolean(isSubmitting || (accessToken && isLoadingCategories))}
+          style={[
+            styles.saveButton,
+            isSubmitting || (accessToken && isLoadingCategories) ? { opacity: 0.6 } : null,
+          ]}
           onPress={handleSave}
         >
-          <Text style={styles.saveButtonText}>{submitLabel}</Text>
+          <Text style={styles.saveButtonText}>{isSubmitting ? 'ĐANG LƯU...' : submitLabel}</Text>
         </Pressable>
       </ScrollView>
 

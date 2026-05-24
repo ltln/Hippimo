@@ -21,6 +21,24 @@ type UseCategoriesOptions = {
   status?: CategoryStatus
 }
 
+const filterCategories = (categories: Category[], type?: CategoryType, status?: CategoryStatus) => {
+  if (!type && !status) {
+    return categories
+  }
+
+  return categories.filter((category) => {
+    if (type && category.type !== type) {
+      return false
+    }
+
+    if (status && category.status !== status) {
+      return false
+    }
+
+    return true
+  })
+}
+
 export const mapCategoriesToOptions = (categories: Category[]): CategoryOption[] =>
   categories.map((category) => ({
     value: category.name,
@@ -33,6 +51,8 @@ export const mapCategoriesToOptions = (categories: Category[]): CategoryOption[]
 export function useCategories(options?: UseCategoriesOptions) {
   const { authResponse } = useAuth()
   const accessToken = authResponse?.tokens.accessToken
+  const optionType = options?.type
+  const optionStatus = options?.status
 
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -42,7 +62,7 @@ export function useCategories(options?: UseCategoriesOptions) {
     if (!accessToken) {
       setCategories([])
       setError(null)
-      return
+      return []
     }
 
     setIsLoading(true)
@@ -51,13 +71,15 @@ export function useCategories(options?: UseCategoriesOptions) {
     try {
       const data = await listCategories(accessToken)
       setCategories(data)
+      return filterCategories(data, optionType, optionStatus)
     } catch (err) {
       setCategories([])
       setError(err instanceof Error ? err.message : 'Failed to load categories.')
+      return []
     } finally {
       setIsLoading(false)
     }
-  }, [accessToken])
+  }, [accessToken, optionStatus, optionType])
 
   useEffect(() => {
     let isMounted = true
@@ -101,23 +123,10 @@ export function useCategories(options?: UseCategoriesOptions) {
     }
   }, [accessToken])
 
-  const filteredCategories = useMemo(() => {
-    if (!options?.type && !options?.status) {
-      return categories
-    }
-
-    return categories.filter((category) => {
-      if (options.type && category.type !== options.type) {
-        return false
-      }
-
-      if (options.status && category.status !== options.status) {
-        return false
-      }
-
-      return true
-    })
-  }, [categories, options?.status, options?.type])
+  const filteredCategories = useMemo(
+    () => filterCategories(categories, optionType, optionStatus),
+    [categories, optionStatus, optionType],
+  )
 
   return {
     categories: filteredCategories,

@@ -169,6 +169,16 @@ const buildBudgetTitle = (categoryName: string, period: BudgetPeriod) => {
   return `${categoryName} hàng tháng`
 }
 
+const isSameBudgetPeriod = (first: BudgetItem, second: BudgetItem) =>
+  first.categoryId === second.categoryId &&
+  first.period === second.period &&
+  normalizeDateOnly(first.startDate) === normalizeDateOnly(second.startDate)
+
+const getDuplicateBudgetMessage = (period: BudgetPeriod) =>
+  period === 'weekly'
+    ? 'Danh mục này đã có ngân sách cho tuần đã chọn.'
+    : 'Danh mục này đã có ngân sách cho tháng đã chọn.'
+
 type CategorySummary = {
   name: string
   icon?: string | null
@@ -343,7 +353,11 @@ export function BudgetProvider({ children }: PropsWithChildren) {
     }
 
     if (!budget.categoryId) {
-      throw new Error('Vui lÃ²ng chá»n danh má»¥c há»£p lá»‡ trÆ°á»›c khi lÆ°u ngÃ¢n sÃ¡ch')
+      throw new Error('Vui lòng chọn danh mục hợp lệ trước khi lưu ngân sách')
+    }
+
+    if (budgets.some((item) => isSameBudgetPeriod(item, budget))) {
+      throw new Error(getDuplicateBudgetMessage(budget.period))
     }
 
     const payload: CreateBudgetDto = {
@@ -377,7 +391,11 @@ export function BudgetProvider({ children }: PropsWithChildren) {
     }
 
     if (!budget.categoryId) {
-      throw new Error('Vui lÃ²ng chá»n danh má»¥c há»£p lá»‡ trÆ°á»›c khi lÆ°u ngÃ¢n sÃ¡ch')
+      throw new Error('Vui lòng chọn danh mục hợp lệ trước khi lưu ngân sách')
+    }
+
+    if (budgets.some((item) => item.id !== budget.id && isSameBudgetPeriod(item, budget))) {
+      throw new Error(getDuplicateBudgetMessage(budget.period))
     }
 
     const updated = await updateBudgetApi(
