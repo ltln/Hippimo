@@ -1,12 +1,28 @@
-import { useEffect } from 'react'
-import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { CameraView, useCameraPermissions } from 'expo-camera'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
+import { CameraView, useCameraPermissions } from 'expo-camera'
+import * as ImagePicker from 'expo-image-picker'
+import { useEffect, useRef, useState } from 'react'
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  ViewStyle,
+} from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
-export default function QrScreen() {
+import { saveScanningDebugResult } from '@/features/scanner/data/scanning-debug-store'
+import { extractReceiptFieldsFromImage } from '@/features/scanner/utils/receipt-ocr'
+
+export default function ScannerScreen() {
+  const cameraRef = useRef<CameraView>(null)
   const [permission, requestPermission] = useCameraPermissions()
+  const [isCameraReady, setIsCameraReady] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanError, setScanError] = useState<string | null>(null)
 
   useEffect(() => {
     if (permission && !permission.granted && permission.canAskAgain) {
@@ -22,20 +38,67 @@ export default function QrScreen() {
     return (
       <SafeAreaView style={styles.permissionWrap} edges={['top', 'left', 'right']}>
         <Ionicons name='camera-outline' size={48} color='#FFFFFF' />
-        <Text style={styles.permissionTitle}>Can camera de quet QR</Text>
+        <Text style={styles.permissionTitle}>Camera permission needed</Text>
         <Text style={styles.permissionText}>
-          Vui long cap quyen camera de su dung tinh nang quet QR.
+          Allow camera access to scan receipt images on this device.
         </Text>
         <Pressable style={styles.permissionButton} onPress={() => requestPermission()}>
-          <Text style={styles.permissionButtonText}>Cap quyen camera</Text>
+          <Text style={styles.permissionButtonText}>Allow camera</Text>
         </Pressable>
       </SafeAreaView>
     )
   }
 
+  const scanImage = async (receiptImageUri: string) => {
+    try {
+      setScanError(null)
+      setIsScanning(true)
+      const result = await extractReceiptFieldsFromImage(receiptImageUri)
+      const id = saveScanningDebugResult(result)
+      router.push({ pathname: '/scanning-debug', params: { id } } as never)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Receipt OCR failed.'
+      setScanError(message)
+    } finally {
+      setIsScanning(false)
+    }
+  }
+
+  const captureReceipt = async () => {
+    if (!cameraRef.current || !isCameraReady || isScanning) {
+      return
+    }
+
+    const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 })
+
+    if (photo?.uri) {
+      await scanImage(photo.uri)
+    }
+  }
+
+  const pickReceiptImage = async () => {
+    if (isScanning) {
+      return
+    }
+
+    const pickedImage = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 1,
+    })
+
+    if (!pickedImage.canceled && pickedImage.assets[0]?.uri) {
+      await scanImage(pickedImage.assets[0].uri)
+    }
+  }
+
   return (
     <View style={styles.container}>
-      <CameraView style={StyleSheet.absoluteFillObject} facing='back' />
+      <CameraView
+        ref={cameraRef}
+        style={StyleSheet.absoluteFillObject}
+        facing='back'
+        onCameraReady={() => setIsCameraReady(true)}
+      />
 
       <SafeAreaView style={styles.overlay} edges={['top', 'left', 'right']}>
         <View style={styles.topRow}>
@@ -46,7 +109,7 @@ export default function QrScreen() {
 
         <View style={styles.scanArea}>
           <View style={styles.scanTitlePill}>
-            <Text style={styles.scanTitle}>Quét hóa đơn</Text>
+            <Text style={styles.scanTitle}>Scan receipt</Text>
           </View>
           <ScanCorner position='topLeft' />
           <ScanCorner position='topRight' />
@@ -54,11 +117,38 @@ export default function QrScreen() {
           <ScanCorner position='bottomRight' />
         </View>
 
-        <View style={styles.actionsColumn}>
-          <Pressable style={styles.actionButton}>
-            <Ionicons name='image-outline' size={20} color='#1B1B1B' />
-          </Pressable>
-          <Text style={styles.actionLabel}>Chọn ảnh</Text>
+        <View style={styles.bottomArea}>
+          {scanError ? <Text style={styles.errorText}>{scanError}</Text> : null}
+
+          <View style={styles.actionsRow}>
+            <View style={styles.sideAction}>
+              <Pressable
+                style={styles.actionButton}
+                onPress={pickReceiptImage}
+                disabled={isScanning}
+              >
+                <Ionicons name='image-outline' size={20} color='#1B1B1B' />
+              </Pressable>
+              <Text style={styles.actionLabel}>Image</Text>
+            </View>
+
+            <Pressable
+              style={[
+                styles.captureButton,
+                (!isCameraReady || isScanning) && styles.disabledButton,
+              ]}
+              onPress={captureReceipt}
+              disabled={!isCameraReady || isScanning}
+            >
+              {isScanning ? (
+                <ActivityIndicator color='#FFFFFF' />
+              ) : (
+                <Ionicons name='scan-outline' size={30} color='#FFFFFF' />
+              )}
+            </Pressable>
+
+            <View style={styles.sideAction} />
+          </View>
         </View>
       </SafeAreaView>
     </View>
@@ -192,8 +282,18 @@ const styles = StyleSheet.create({
     right: 0,
     borderRightWidth: 3,
   },
-  actionsColumn: {
-    alignItems: 'flex-end',
+  bottomArea: {
+    gap: 14,
+  },
+  actionsRow: {
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sideAction: {
+    width: 76,
+    alignItems: 'center',
     gap: 12,
   },
   actionButton: {
@@ -203,13 +303,36 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'flex-end',
   },
   actionLabel: {
     fontSize: 12,
-    color: '#1B1B1B',
+    color: '#FFFFFF',
     fontWeight: '700',
     textAlign: 'center',
     marginTop: -2,
+  },
+  captureButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#16A34A',
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+  },
+  disabledButton: {
+    opacity: 0.55,
+  },
+  errorText: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(180,30,30,0.82)',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 })

@@ -37,6 +37,7 @@ export default function RootLayout() {
                       <Stack.Screen name='edit-wallet' options={{ headerShown: false }} />
                       <Stack.Screen name='add-limit' options={{ headerShown: false }} />
                       <Stack.Screen name='edit-limit' options={{ headerShown: false }} />
+                      <Stack.Screen name='scanning-debug' options={{ headerShown: false }} />
                       <Stack.Screen name='account-info' options={{ headerShown: false }} />
                       <Stack.Screen name='oauthredirect' options={{ headerShown: false }} />
                       <Stack.Screen

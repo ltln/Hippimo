@@ -48,9 +48,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name='qr'
+        name='scanner'
         options={{
-          title: 'QR',
+          title: 'Scanner',
+          tabBarStyle: { display: 'none' },
           tabBarLabel: () => null,
           tabBarItemStyle: { paddingTop: 0, paddingBottom: 0 },
           tabBarButton: (props: BottomTabBarButtonProps) => (
