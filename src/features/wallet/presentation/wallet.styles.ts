@@ -129,11 +129,11 @@ export const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '900',
     lineHeight: 36,
-    color: '#FFCD24',
+    color: '#FFD23F',
   },
   balanceCurrency: {
     fontSize: 20,
-    color: 'rgba(255, 239, 141, 0.78)',
+    color: 'rgba(255, 238, 150, 0.92)',
   },
   walletMetricRow: {
     flexDirection: 'row',
@@ -155,11 +155,11 @@ export const styles = StyleSheet.create({
     fontSize: 21,
     fontWeight: '900',
     lineHeight: 27,
-    color: '#79F4A6',
+    color: '#006D4E',
   },
   incomeCurrency: {
     fontSize: 15,
-    color: 'rgba(185, 255, 208, 0.72)',
+    color: 'rgba(0, 109, 78, 0.72)',
   },
   spentLabel: {
     fontSize: 13,
@@ -171,11 +171,11 @@ export const styles = StyleSheet.create({
     fontSize: 21,
     fontWeight: '900',
     lineHeight: 27,
-    color: '#FFB0A4',
+    color: '#B42318',
   },
   spentCurrency: {
     fontSize: 15,
-    color: 'rgba(255, 216, 210, 0.72)',
+    color: 'rgba(180, 35, 24, 0.72)',
   },
   recentTitle: {
     marginTop: 22,
