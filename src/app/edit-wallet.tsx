@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router'
+import { useEffect, useRef, useState } from 'react'
 import { Alert, StyleSheet, Text, View } from 'react-native'
 
 import { WalletForm } from '@/features/wallet/presentation/components/wallet-form'
@@ -6,8 +7,39 @@ import { useWallets } from '@/features/wallet/data/wallet-context'
 
 export default function EditWalletScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>()
-  const { wallets, updateWallet } = useWallets()
+  const { wallets, updateWallet, refreshWallets } = useWallets()
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const hasAttemptedRefresh = useRef(false)
   const wallet = wallets.find((item) => item.id === id)
+
+  useEffect(() => {
+    if (!id || wallet || isRefreshing || hasAttemptedRefresh.current) {
+      return
+    }
+
+    let isMounted = true
+    hasAttemptedRefresh.current = true
+    setIsRefreshing(true)
+    refreshWallets()
+      .catch((error) => console.error('Refresh wallets before edit failed', error))
+      .finally(() => {
+        if (isMounted) {
+          setIsRefreshing(false)
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [id, isRefreshing, refreshWallets, wallet])
+
+  if (id && isRefreshing) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>Đang tải dữ liệu ví...</Text>
+      </View>
+    )
+  }
 
   if (!wallet || !id) {
     return (
@@ -22,11 +54,16 @@ export default function EditWalletScreen() {
       title='CHỈNH SỬA VÍ'
       submitLabel='CẬP NHẬT VÍ'
       initialWallet={wallet}
-      onSubmit={(updatedWallet) => {
-        updateWallet(updatedWallet)
-        Alert.alert('Đã cập nhật', 'Thông tin ví đã được cập nhật.', [
-          { text: 'OK', onPress: () => router.back() },
-        ])
+      onSubmit={async (updatedWallet) => {
+        try {
+          await updateWallet(updatedWallet)
+          router.replace('/(tabs)/wallet')
+        } catch (error) {
+          Alert.alert(
+            'Không cập nhật được ví',
+            error instanceof Error ? error.message : 'Vui lòng thử lại.',
+          )
+        }
       }}
     />
   )

@@ -23,7 +23,7 @@ export const defaultTransactionFormValues: TransactionFormValues = {
   amount: '400000',
   note: '',
   expenseWallet: 'cash-main',
-  expenseCategory: 'Ăn uống',
+  expenseCategory: '',
   expenseWalletType: 'Tiền mặt',
   transferFromWallet: 'cash-main',
   transferToWallet: 'momo-main',
@@ -59,6 +59,9 @@ export function buildTransaction({
   expenseWallet,
   expenseWalletTypeLabel,
   expenseCategory,
+  categoryId,
+  categoryIcon,
+  categoryColor,
   transferFromWallet,
   transferToWallet,
   wallets,
@@ -71,6 +74,9 @@ export function buildTransaction({
   expenseWallet: string
   expenseWalletTypeLabel?: string
   expenseCategory: string
+  categoryId?: string
+  categoryIcon?: TransactionItem['icon']
+  categoryColor?: string | null
   transferFromWallet: string
   transferToWallet: string
   wallets: WalletItem[]
@@ -121,9 +127,10 @@ export function buildTransaction({
     amountValue: -amountValue,
     dateLabel: date.display,
     dateISO: date.iso,
-    icon: mapCategoryIcon(expenseCategory),
-    iconBackground: mapCategoryColor(expenseCategory),
+    icon: categoryIcon ?? getCategoryIcon(expenseCategory),
+    iconBackground: categoryColor ?? getCategoryColor(expenseCategory),
     type: 'expense',
+    categoryId,
     walletId: expenseWalletItem?.id,
     detail: {
       amountDisplay: `-${formattedAmount}`,
@@ -226,7 +233,7 @@ function matchKnownWalletId(value: string | undefined, wallets: WalletItem[]) {
   return findWallet(wallets, value)?.id ?? wallets[0].id
 }
 
-function mapCategoryIcon(category: string): TransactionItem['icon'] {
+export function getCategoryIcon(category: string): TransactionItem['icon'] {
   const upper = category.toUpperCase()
   if (upper === 'TIỀN MẶT') return 'cash'
   if (upper === 'NGÂN HÀNG') return 'bank'
@@ -242,9 +249,9 @@ function mapCategoryIcon(category: string): TransactionItem['icon'] {
   return pickFromList(category, customCategoryIcons)
 }
 
-function mapCategoryColor(category: string) {
+export function getCategoryColor(category: string) {
   const upper = category.toUpperCase()
-  if (upper === 'TIỀN MẶT') return '#128A3D'
+  if (upper === 'TIỀN MẶT') return '#79C77C'
   if (upper === 'NGÂN HÀNG') return '#3D94C6'
   if (upper === 'TIẾT KIỆM') return '#F0C65A'
   if (upper === 'VÍ ĐIỆN TỬ') return '#7E63F4'

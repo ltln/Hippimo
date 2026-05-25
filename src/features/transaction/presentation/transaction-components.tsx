@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, Text, View, type StyleProp, type TextStyle } from 'react-native'
 
 import { getWalletTypeMeta, type WalletItem } from '@/features/wallet/data/wallet-context'
 import type { TransactionItem } from '@/features/transaction/data/transaction-context'
@@ -41,75 +41,76 @@ export function DetailCard({
 
   return (
     <View style={[styles.detailCard, isTransfer ? styles.detailCardDark : styles.detailCardLight]}>
-      <View style={styles.detailActions}>
-        <Pressable
-          hitSlop={8}
-          onPress={() => router.push({ pathname: '/edit-transaction', params: { id: item.id } })}
-          style={styles.editButton}
-        >
-          <MaterialCommunityIcons name='pencil-outline' size={18} color='#E5FFF1' />
-        </Pressable>
-        <Pressable hitSlop={12} onPress={onDelete}>
-          <MaterialCommunityIcons name='trash-can-outline' size={19} color='#FFB0A4' />
-        </Pressable>
-      </View>
-
-      {isTransfer ? (
-        <View style={styles.detailTop}>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={[styles.transferAmount, { color: item.detail.amountColor, textAlign: 'left' }]}
-            >
-              {item.detail.amountDisplay}
-            </Text>
-
+      <View style={styles.detailHeaderRow}>
+        <View style={styles.detailCategoryRow}>
+          {isTransfer ? (
             <View
               style={[
-                styles.transferIconsCentered,
-                { justifyContent: 'flex-start', marginTop: 10 },
+                styles.detailCategoryIcon,
+                { backgroundColor: item.iconBackground ?? '#12392C' },
               ]}
             >
-              <View style={styles.transferPill}>
-                <MaterialCommunityIcons
-                  name={getWalletTypeMeta(transferWallets.fromType).icon}
-                  size={14}
-                  color='#0B1D17'
-                />
-                <Text style={styles.transferPillText}>{transferWallets.fromWallet}</Text>
-              </View>
-              <Ionicons name='arrow-forward' size={14} color='#FFFFFF' />
-              <View style={styles.transferPill}>
-                <MaterialCommunityIcons
-                  name={getWalletTypeMeta(transferWallets.toType).icon}
-                  size={14}
-                  color='#0B1D17'
-                />
-                <Text style={styles.transferPillText}>{transferWallets.toWallet}</Text>
-              </View>
+              <MaterialCommunityIcons name='swap-horizontal' size={22} color='#D4F8E6' />
             </View>
-          </View>
-
-          <View style={[styles.detailIconWrap, styles.detailIconWrapDark]}>
-            <View style={styles.detailRoundIcon}>
-              <MaterialCommunityIcons name='swap-horizontal' size={24} color='#D4F8E6' />
+          ) : (
+            <View
+              style={[
+                styles.detailCategoryIcon,
+                { backgroundColor: item.iconBackground ?? '#12392C' },
+              ]}
+            >
+              <MaterialCommunityIcons name={item.icon} size={22} color='#FFFFFF' />
             </View>
-            <Text style={styles.detailFooterTitle}>Chuyển tiền ví</Text>
-          </View>
-        </View>
-      ) : (
-        <View style={styles.detailTop}>
-          <Text style={[styles.detailAmount, { color: item.detail.amountColor }]}>
-            {item.detail.amountDisplay}
+          )}
+          <Text style={styles.detailCategoryTitle} numberOfLines={1}>
+            {isTransfer ? 'Chuyển tiền ví' : item.detail.footer}
           </Text>
+        </View>
 
-          <View style={[styles.detailIconWrap, styles.detailIconWrapDark]}>
-            <View style={styles.detailRoundIcon}>
-              <MaterialCommunityIcons name={item.icon} size={24} color='#D4F8E6' />
-            </View>
-            <Text style={styles.detailFooterTitle}>{item.detail.footer}</Text>
+        <View style={styles.detailActions}>
+          <Pressable
+            hitSlop={8}
+            onPress={() => router.push({ pathname: '/edit-transaction', params: { id: item.id } })}
+            style={styles.editButton}
+          >
+            <MaterialCommunityIcons name='pencil-outline' size={18} color='#E5FFF1' />
+          </Pressable>
+          <Pressable hitSlop={12} onPress={onDelete}>
+            <MaterialCommunityIcons name='trash-can-outline' size={19} color='#FFB0A4' />
+          </Pressable>
+        </View>
+      </View>
+
+      <MoneyText
+        value={item.detail.amountDisplay}
+        valueStyle={[
+          isTransfer ? styles.transferAmount : styles.detailAmount,
+          { color: item.detail.amountColor },
+        ]}
+        currencyStyle={isTransfer ? styles.transferCurrency : styles.detailAmountCurrency}
+      />
+
+      {isTransfer ? (
+        <View style={[styles.transferIconsCentered, { justifyContent: 'flex-start' }]}>
+          <View style={styles.transferPill}>
+            <MaterialCommunityIcons
+              name={getWalletTypeMeta(transferWallets.fromType).icon}
+              size={14}
+              color='#0B1D17'
+            />
+            <Text style={styles.transferPillText}>{transferWallets.fromWallet}</Text>
+          </View>
+          <Ionicons name='arrow-forward' size={14} color='#FFFFFF' />
+          <View style={styles.transferPill}>
+            <MaterialCommunityIcons
+              name={getWalletTypeMeta(transferWallets.toType).icon}
+              size={14}
+              color='#0B1D17'
+            />
+            <Text style={styles.transferPillText}>{transferWallets.toWallet}</Text>
           </View>
         </View>
-      )}
+      ) : null}
 
       <View style={styles.detailInfo}>
         <DetailLine icon='calendar-outline' text={item.detail.date} />
@@ -134,6 +135,25 @@ export function DetailCard({
         </Text>
       </View>
     </View>
+  )
+}
+
+function MoneyText({
+  currencyStyle,
+  value,
+  valueStyle,
+}: {
+  currencyStyle: StyleProp<TextStyle>
+  value: string
+  valueStyle: StyleProp<TextStyle>
+}) {
+  const [amount, currency] = value.split(/\s+(?=VND$)/)
+
+  return (
+    <Text style={valueStyle} numberOfLines={1} adjustsFontSizeToFit>
+      {amount}
+      {currency ? <Text style={currencyStyle}> {currency}</Text> : null}
+    </Text>
   )
 }
 

@@ -10,13 +10,14 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
+        animation: 'shift',
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarShowLabel: true,
         tabBarStyle: {
           height: 72,
           borderTopWidth: 0,
-          backgroundColor: '#0A251B',
+          backgroundColor: '#12392C',
           elevation: 0,
           shadowOpacity: 0,
           overflow: 'visible',
@@ -30,7 +31,7 @@ export default function TabLayout() {
           fontWeight: '800',
         },
         tabBarActiveTintColor: '#FFFFFF',
-        tabBarInactiveTintColor: '#8A9D93',
+        tabBarInactiveTintColor: '#DDF2D2',
       }}
     >
       <Tabs.Screen
@@ -63,9 +64,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name='limits'
+        name='budgets'
         options={{
-          title: 'Hạn mức',
+          title: 'Ngân sách',
           tabBarIcon: ({ color }) => <Ionicons name='stats-chart' size={22} color={color} />,
         }}
       />
@@ -81,6 +82,13 @@ export default function TabLayout() {
         options={{
           href: null,
           title: 'Chat AI',
+        }}
+      />
+      <Tabs.Screen
+        name='categories'
+        options={{
+          href: null,
+          title: 'Danh mục',
         }}
       />
       <Tabs.Screen
@@ -106,10 +114,10 @@ const styles = StyleSheet.create({
     borderRadius: 31,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#16A34A',
+    backgroundColor: '#79C77C',
     borderWidth: 4,
     borderColor: '#FFFFFF',
-    shadowColor: '#16A34A',
+    shadowColor: '#79C77C',
     shadowOpacity: 0.35,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },

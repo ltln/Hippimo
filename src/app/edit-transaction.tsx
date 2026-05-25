@@ -19,7 +19,7 @@ export default function EditTransactionScreen() {
           flex: 1,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#F4F1EF',
+          backgroundColor: '#F7FBF5',
           paddingHorizontal: 24,
         }}
       >
@@ -32,15 +32,20 @@ export default function EditTransactionScreen() {
 
   return (
     <TransactionForm
-      title='CHỈNH SỬA GIAO DỊCH'
+      title='SỬA GIAO DỊCH'
       submitLabel='CẬP NHẬT GIAO DỊCH'
       initialValues={getTransactionFormValues(transaction, wallets)}
       transactionId={transaction.id}
-      onSubmit={(updatedTransaction) => {
-        updateTransaction(updatedTransaction)
-        Alert.alert('Đã cập nhật', 'Thông tin giao dịch đã được cập nhật.', [
-          { text: 'OK', onPress: () => router.back() },
-        ])
+      onSubmit={async (updatedTransaction) => {
+        try {
+          await updateTransaction(updatedTransaction)
+          router.replace('/(tabs)/transaction')
+        } catch (error) {
+          Alert.alert(
+            'Không cập nhật được giao dịch',
+            error instanceof Error ? error.message : 'Vui lòng thử lại.',
+          )
+        }
       }}
     />
   )

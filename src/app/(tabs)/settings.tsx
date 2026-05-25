@@ -3,6 +3,7 @@ import { router } from 'expo-router'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { Typography } from '@/config/constants/theme'
 import { useAuth } from '@/features/auth/data/auth-context'
 
 const settingItems = [
@@ -70,11 +71,12 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+          <Pressable onPress={() => router.replace('/')} hitSlop={8} style={styles.backButton}>
             <Ionicons name='arrow-back' size={27} color='#0B1D17' />
           </Pressable>
-          <Text style={styles.title}>Cài đặt</Text>
-          <View style={styles.headerSpacer} />
+          <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
+            CÀI ĐẶT
+          </Text>
         </View>
 
         <View style={styles.list}>
@@ -106,21 +108,22 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 34,
+    justifyContent: 'flex-end',
+    marginBottom: 22,
   },
   backButton: {
-    width: 44,
+    position: 'absolute',
+    left: 0,
+    top: 0,
     justifyContent: 'center',
+    zIndex: 2,
   },
-  title: {
+  headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 28,
+    fontSize: Typography.screenHeaderFontSize,
     fontWeight: '900',
     color: '#0B1D17',
-  },
-  headerSpacer: {
-    width: 44,
   },
   list: {
     gap: 10,
@@ -128,7 +131,7 @@ const styles = StyleSheet.create({
   item: {
     minHeight: 62,
     borderRadius: 5,
-    backgroundColor: '#128A3D',
+    backgroundColor: '#79C77C',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 20,

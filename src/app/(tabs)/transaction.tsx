@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import {
@@ -46,30 +46,30 @@ export default function TransactionScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top + 12, 28) }]}>
+        <Text style={styles.headerTitle}>GIAO DỊCH</Text>
+        <View style={[styles.headerActions, { top: Math.max(insets.top + 12, 28) }]}>
+          <Pressable
+            onPress={() => setShowFilters((current) => !current)}
+            hitSlop={8}
+            style={styles.headerIconButton}
+          >
+            <Ionicons name='search' size={22} color='#081A13' />
+          </Pressable>
+          <Pressable
+            hitSlop={8}
+            style={styles.headerIconButton}
+            onPress={() => router.push('/add-transaction')}
+          >
+            <Ionicons name='add' size={26} color='#081A13' />
+          </Pressable>
+        </View>
+      </View>
+
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 12, 28) }]}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 92 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>GIAO DỊCH</Text>
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => setShowFilters((current) => !current)}
-              hitSlop={8}
-              style={styles.headerIconButton}
-            >
-              <Ionicons name='search' size={22} color='#081A13' />
-            </Pressable>
-            <Pressable
-              hitSlop={8}
-              style={styles.headerIconButton}
-              onPress={() => router.push('/add-transaction')}
-            >
-              <Ionicons name='add' size={26} color='#081A13' />
-            </Pressable>
-          </View>
-        </View>
-
         {showFilters ? (
           <View style={styles.controlCard}>
             <View style={styles.controlHeader}>
@@ -90,12 +90,12 @@ export default function TransactionScreen() {
 
             <Text style={[styles.fieldLabel, styles.fieldSpacing]}>Tìm theo ngày, tháng, năm</Text>
             <View style={styles.searchField}>
-              <MaterialCommunityIcons name='calendar-month-outline' size={18} color='#49685B' />
+              <MaterialCommunityIcons name='calendar-month-outline' size={18} color='#245442' />
               <TextInput
                 value={dateQuery}
                 onChangeText={setDateQuery}
                 placeholder='VD: 07-04-2026, 04-2026 hoặc 2026'
-                placeholderTextColor='#7C9086'
+                placeholderTextColor='#245442'
                 style={styles.searchInput}
               />
             </View>
@@ -110,9 +110,16 @@ export default function TransactionScreen() {
             onDelete={() => {
               const id = item.id
               const title = item.title
-              confirmDelete('Xóa giao dịch', `Bạn có chắc muốn xóa ${title}?`, () =>
-                deleteTransaction(id),
-              )
+              confirmDelete('Xóa giao dịch', `Bạn có chắc muốn xóa ${title}?`, async () => {
+                try {
+                  await deleteTransaction(id)
+                } catch (error) {
+                  Alert.alert(
+                    'Không xóa được giao dịch',
+                    error instanceof Error ? error.message : 'Vui lòng thử lại.',
+                  )
+                }
+              })
             }}
           />
         ))}

@@ -248,7 +248,7 @@ export function AuthGate({ children }: PropsWithChildren) {
   if (loginState === 'restoring' && rootSegment !== 'login') {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator color='#0A251B' />
+        <ActivityIndicator color='#12392C' />
       </View>
     )
   }

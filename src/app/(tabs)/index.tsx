@@ -5,6 +5,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { Typography } from '@/config/constants/theme'
 import { useTransactions } from '@/features/transaction/data/transaction-context'
 import {
   formatVnd,
@@ -32,21 +33,30 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <Pressable style={styles.headerButton} accessibilityLabel='Thông báo'>
-          <Ionicons name='notifications-outline' size={22} color='#12392C' />
-        </Pressable>
-        <Text style={styles.headerTitle}>T4, 01/04</Text>
-        <View style={styles.headerActions}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top + 18, 34) }]}>
+        <View style={[styles.headerLeftAction, { top: Math.max(insets.top + 18, 34) + 2 }]}>
           <Pressable
-            style={styles.headerButton}
+            style={styles.headerIconButton}
+            accessibilityLabel='Danh mục'
+            onPress={() => router.push('/(tabs)/categories')}
+          >
+            <MaterialCommunityIcons name='tag-outline' size={21} color='#12392C' />
+          </Pressable>
+        </View>
+        <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
+          TỔNG QUAN
+        </Text>
+        <View style={[styles.headerActions, { top: Math.max(insets.top + 18, 34) + 2 }]}>
+          <Pressable
+            style={styles.headerIconButton}
             accessibilityLabel='Chat AI'
             onPress={() => router.push('/(tabs)/chat_ai')}
           >
             <Ionicons name='sparkles-outline' size={22} color='#12392C' />
           </Pressable>
+
           <Pressable
-            style={styles.headerButton}
+            style={styles.headerIconButton}
             accessibilityLabel='Cài đặt'
             onPress={() => router.push('/(tabs)/settings')}
           >
@@ -222,33 +232,37 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingHorizontal: 22,
     paddingBottom: 18,
     backgroundColor: '#F7FBF5',
     position: 'relative',
   },
   headerActions: {
+    position: 'absolute',
+    right: 22,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  headerButton: {
-    width: 38,
-    height: 38,
+  headerLeftAction: {
+    position: 'absolute',
+    left: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 19,
-    backgroundColor: '#EAF3E6',
+  },
+  headerIconButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 24,
+    minHeight: 24,
   },
   headerTitle: {
-    color: '#12392C',
-    fontSize: 19,
-    fontWeight: '800',
-    left: 0,
+    flex: 1,
+    color: '#081A13',
+    fontSize: Typography.screenHeaderFontSize,
+    fontWeight: '900',
     pointerEvents: 'none',
-    position: 'absolute',
-    right: 0,
     textAlign: 'center',
   },
   content: {
