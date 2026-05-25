@@ -52,7 +52,7 @@ export function TransactionForm({
   onSubmit,
 }: TransactionFormProps) {
   const insets = useSafeAreaInsets()
-  const { categories } = useCategories({ type: 'EXPENSE', status: 'ACTIVE' })
+  const { categories } = useCategories({ status: 'ACTIVE' })
   const { wallets } = useWallets()
   const amountInputRef = useRef<TextInput>(null)
   const [mode, setMode] = useState<CreateMode>(initialValues.mode)

@@ -22,12 +22,24 @@ import {
   updateCategory,
 } from '@/features/category/data/category-api'
 import { useCategories } from '@/features/category/data/use-categories'
-import type { Category } from '@/features/category/domain/category.types'
+import type { Category, CategoryType } from '@/features/category/domain/category.types'
 import { useAuth } from '@/features/auth/data/auth-context'
 import { getCategoryColor, getCategoryIcon } from '@/features/transaction/utils/transaction-form'
 import { confirmDelete } from '@/shared/utils/confirm-delete'
 
 type MaterialIconName = ComponentProps<typeof MaterialCommunityIcons>['name']
+type TypeFilter = 'ALL' | CategoryType
+
+const typeFilters: { label: string; value: TypeFilter }[] = [
+  { label: 'Tất cả', value: 'ALL' },
+  { label: 'Chi tiêu', value: 'EXPENSE' },
+  { label: 'Thu nhập', value: 'INCOME' },
+]
+
+const typeLabels: Record<CategoryType, string> = {
+  EXPENSE: 'Chi tiêu',
+  INCOME: 'Thu nhập',
+}
 
 const showAlert = (title: string, message: string) => {
   if (Platform.OS === 'web') {
@@ -44,18 +56,21 @@ export default function CategoriesScreen() {
   const accessToken = authResponse?.tokens.accessToken
   const { categories, error, isLoading, refresh } = useCategories({ status: 'ACTIVE' })
   const [searchQuery, setSearchQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL')
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
 
   const visibleCategories = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase()
 
-    if (!normalizedQuery) {
-      return categories
-    }
+    return categories.filter((category) => {
+      const matchesType = typeFilter === 'ALL' || category.type === typeFilter
+      const matchesSearch =
+        !normalizedQuery || category.name.toLowerCase().includes(normalizedQuery)
 
-    return categories.filter((category) => category.name.toLowerCase().includes(normalizedQuery))
-  }, [categories, searchQuery])
+      return matchesType && matchesSearch
+    })
+  }, [categories, searchQuery, typeFilter])
 
   const openCreateForm = () => {
     setEditingCategory(null)
@@ -107,6 +122,25 @@ export default function CategoriesScreen() {
           >
             <Ionicons name='add' size={28} color='#0B1D17' />
           </Pressable>
+        </View>
+
+        <View style={styles.filterRow}>
+          {typeFilters.map((filter) => (
+            <Pressable
+              key={filter.value}
+              style={[styles.filterChip, typeFilter === filter.value && styles.filterChipActive]}
+              onPress={() => setTypeFilter(filter.value)}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  typeFilter === filter.value && styles.filterChipTextActive,
+                ]}
+              >
+                {filter.label}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
         <View style={styles.searchBox}>
@@ -200,6 +234,7 @@ function CategoryRow({
       </View>
       <View style={styles.categoryBody}>
         <Text style={styles.categoryName}>{category.name}</Text>
+        <Text style={styles.categoryType}>{typeLabels[category.type]}</Text>
       </View>
       <View style={styles.rowActions}>
         <Pressable style={styles.iconButton} onPress={onEdit} hitSlop={8}>
@@ -227,6 +262,7 @@ function CategoryFormModal({
   visible: boolean
 }) {
   const [name, setName] = useState('')
+  const [type, setType] = useState<CategoryType>('EXPENSE')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
@@ -235,6 +271,7 @@ function CategoryFormModal({
     }
 
     setName(category?.name ?? '')
+    setType(category?.type ?? 'EXPENSE')
   }, [category, visible])
 
   const handleSave = async () => {
@@ -254,6 +291,7 @@ function CategoryFormModal({
       setIsSubmitting(true)
       const payload = {
         name: trimmedName,
+        type,
         icon: getCategoryIcon(trimmedName),
         color: getCategoryColor(trimmedName),
       }
@@ -261,7 +299,7 @@ function CategoryFormModal({
       if (category) {
         await updateCategory(category.categoryId, payload, accessToken)
       } else {
-        await createCategory({ ...payload, type: 'EXPENSE' }, accessToken)
+        await createCategory(payload, accessToken)
       }
 
       await onSaved()
@@ -288,6 +326,21 @@ function CategoryFormModal({
             placeholderTextColor='#7C9086'
             style={styles.input}
           />
+
+          <Text style={styles.inputLabel}>Loại danh mục</Text>
+          <View style={styles.typeRow}>
+            {(['EXPENSE', 'INCOME'] as CategoryType[]).map((item) => (
+              <Pressable
+                key={item}
+                style={[styles.typeButton, type === item && styles.typeButtonActive]}
+                onPress={() => setType(item)}
+              >
+                <Text style={[styles.typeButtonText, type === item && styles.typeButtonTextActive]}>
+                  {typeLabels[item]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
 
           <Pressable
             disabled={isSubmitting}
@@ -350,6 +403,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 12,
+  },
+  filterChip: {
+    borderRadius: 999,
+    backgroundColor: '#EAF3E6',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  filterChipActive: {
+    backgroundColor: '#063629',
+  },
+  filterChipText: {
+    color: '#12392C',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+  },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -399,6 +475,12 @@ const styles = StyleSheet.create({
     color: '#0C3025',
     fontSize: 15,
     fontWeight: '900',
+  },
+  categoryType: {
+    marginTop: 3,
+    color: '#245442',
+    fontSize: 12,
+    fontWeight: '800',
   },
   rowActions: {
     flexDirection: 'row',
@@ -473,6 +555,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 11,
     marginBottom: 18,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 18,
+  },
+  typeButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 999,
+    backgroundColor: '#EAF3E6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  typeButtonActive: {
+    backgroundColor: '#063629',
+  },
+  typeButtonText: {
+    color: '#12392C',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  typeButtonTextActive: {
+    color: '#FFFFFF',
   },
   saveButton: {
     minHeight: 48,
