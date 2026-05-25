@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 22,
     borderRadius: 20,
-    backgroundColor: '#16A34A',
+    backgroundColor: '#79C77C',
   },
   permissionButtonText: {
     color: '#FFFFFF',
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 18,
     alignSelf: 'center',
-    backgroundColor: '#16A34A',
+    backgroundColor: '#79C77C',
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 44,
     height: 44,
-    borderColor: '#16A34A',
+    borderColor: '#79C77C',
   },
   cornerTop: {
     top: 0,

@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 120,
-    backgroundColor: '#067B35',
+    backgroundColor: '#79C77C',
   },
   content: {
     paddingHorizontal: 16,
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     width: 62,
     height: 62,
     borderRadius: 31,
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -115,13 +115,13 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#16734E',
+    color: '#0C3025',
   },
   id: {
     marginTop: 3,
     fontSize: 12,
     fontWeight: '900',
-    color: '#128A3D',
+    color: '#79C77C',
   },
   infoList: {
     gap: 24,
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     width: 47,
     height: 47,
     borderRadius: 24,
-    backgroundColor: '#128A3D',
+    backgroundColor: '#79C77C',
     alignItems: 'center',
     justifyContent: 'center',
   },

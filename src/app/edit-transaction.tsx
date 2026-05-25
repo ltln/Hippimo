@@ -19,7 +19,7 @@ export default function EditTransactionScreen() {
           flex: 1,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#F4F1EF',
+          backgroundColor: '#F7FBF5',
           paddingHorizontal: 24,
         }}
       >
@@ -32,7 +32,7 @@ export default function EditTransactionScreen() {
 
   return (
     <TransactionForm
-      title='CHỈNH SỬA GIAO DỊCH'
+      title='SỬA GIAO DỊCH'
       submitLabel='CẬP NHẬT GIAO DỊCH'
       initialValues={getTransactionFormValues(transaction, wallets)}
       transactionId={transaction.id}

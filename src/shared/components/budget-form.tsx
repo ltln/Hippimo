@@ -24,8 +24,8 @@ import {
 import type { BudgetItem, BudgetPeriod } from '@/shared/contexts/budget-context'
 
 const periodOptions = [
-  { value: 'weekly', label: 'Hàng tuần' },
-  { value: 'monthly', label: 'Hàng tháng' },
+  { value: 'weekly', label: 'Tuần' },
+  { value: 'monthly', label: 'Tháng' },
 ]
 
 const buildDefaultTitle = (categoryName: string, period: BudgetPeriod) => {
@@ -341,9 +341,7 @@ export function BudgetForm({
           <Text style={styles.label}>CHU KỲ & THỜI GIAN</Text>
           <View style={styles.row}>
             <Pressable style={styles.periodSelector} onPress={() => setOpenDropdown('period')}>
-              <Text style={styles.selectorValue}>
-                {period === 'weekly' ? 'Hàng tuần' : 'Hàng tháng'}
-              </Text>
+              <Text style={styles.selectorValue}>{period === 'weekly' ? 'Tuần' : 'Tháng'}</Text>
               <Ionicons name='chevron-down' size={16} color='#FFF' />
             </Pressable>
 
@@ -560,7 +558,7 @@ function SelectionModal({ visible, title, options, onClose, onSelect }: any) {
             <Pressable key={o.value} style={styles.modalOption} onPress={() => onSelect(o.value)}>
               <View style={styles.modalOptionContent}>
                 {o.icon || o.color ? (
-                  <View style={[styles.modalOptionIcon, { backgroundColor: o.color ?? '#1B4D39' }]}>
+                  <View style={[styles.modalOptionIcon, { backgroundColor: o.color ?? '#12392C' }]}>
                     {o.icon ? (
                       <MaterialCommunityIcons name={o.icon} size={16} color='#FFFFFF' />
                     ) : null}
@@ -568,7 +566,7 @@ function SelectionModal({ visible, title, options, onClose, onSelect }: any) {
                 ) : null}
                 <Text style={styles.modalOptionText}>{o.label}</Text>
               </View>
-              <Ionicons name='chevron-forward' size={16} color='#1B4D39' />
+              <Ionicons name='chevron-forward' size={16} color='#12392C' />
             </Pressable>
           ))}
         </View>
@@ -578,7 +576,7 @@ function SelectionModal({ visible, title, options, onClose, onSelect }: any) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F4F1EF' },
+  safeArea: { flex: 1, backgroundColor: '#F7FBF5' },
   content: { paddingHorizontal: 16, paddingBottom: 40 },
   header: {
     flexDirection: 'row',
@@ -594,10 +592,10 @@ const styles = StyleSheet.create({
     color: '#0B1D17',
   },
   backButton: { width: 40 },
-  card: { backgroundColor: '#198B3F', borderRadius: 16, padding: 16, marginBottom: 16 },
+  card: { backgroundColor: '#79C77C', borderRadius: 16, padding: 16, marginBottom: 16 },
   label: { color: '#FFFFFF', fontSize: 11, fontWeight: '800', marginBottom: 10, opacity: 0.8 },
   input: {
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     borderRadius: 10,
     padding: 12,
     color: '#FFFFFF',
@@ -606,7 +604,7 @@ const styles = StyleSheet.create({
   },
   categoryRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   categoryListButton: {
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     borderRadius: 10,
     width: 44,
     height: 44,
@@ -619,7 +617,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     borderRadius: 10,
     padding: 12,
   },
@@ -627,7 +625,7 @@ const styles = StyleSheet.create({
   dateDisplayGroup: {
     flex: 1.5,
     minHeight: 44,
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 7,
@@ -642,20 +640,20 @@ const styles = StyleSheet.create({
   calendarButton: {
     width: 44,
     height: 44,
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   endDateText: {
-    color: '#D7F3E2',
+    color: '#E9F8E2',
     fontSize: 11,
     fontWeight: '800',
     textAlign: 'center',
   },
   smallInput: {
     flex: 1,
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     borderRadius: 10,
     padding: 10,
     color: '#FFFFFF',
@@ -664,7 +662,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   saveButton: {
-    backgroundColor: '#072D20',
+    backgroundColor: '#12392C',
     borderRadius: 30,
     paddingVertical: 16,
     alignItems: 'center',
@@ -705,7 +703,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#EEF2EF',
+    backgroundColor: '#DDF2D2',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -718,7 +716,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '900',
-    color: '#49685B',
+    color: '#245442',
   },
   calendarGrid: {
     flexDirection: 'row',
@@ -745,7 +743,7 @@ const styles = StyleSheet.create({
     width: '31%',
     minHeight: 48,
     borderRadius: 12,
-    backgroundColor: '#EEF2EF',
+    backgroundColor: '#DDF2D2',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -755,7 +753,7 @@ const styles = StyleSheet.create({
     color: '#0B1D17',
   },
   calendarCellActive: {
-    backgroundColor: '#198B3F',
+    backgroundColor: '#79C77C',
   },
   calendarCellTextActive: {
     color: '#FFFFFF',
@@ -788,5 +786,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalOptionText: { fontSize: 16, fontWeight: '700', color: '#1B4D39' },
+  modalOptionText: { fontSize: 16, fontWeight: '700', color: '#12392C' },
 })

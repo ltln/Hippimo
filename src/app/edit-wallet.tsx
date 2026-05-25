@@ -36,7 +36,7 @@ export default function EditWalletScreen() {
   if (id && isRefreshing) {
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyText}>Äang táº£i dá»¯ liá»‡u vÃ­...</Text>
+        <Text style={styles.emptyText}>Đang tải dữ liệu ví...</Text>
       </View>
     )
   }

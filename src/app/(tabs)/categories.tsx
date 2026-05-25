@@ -103,27 +103,31 @@ export default function CategoriesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top + 18, 34) }]}>
+        <Pressable
+          onPress={() => router.replace('/')}
+          hitSlop={8}
+          style={[styles.backButton, { top: Math.max(insets.top + 18, 34) }]}
+        >
+          <Ionicons name='arrow-back' size={27} color='#0B1D17' />
+        </Pressable>
+        <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
+          DANH MỤC
+        </Text>
+        <Pressable
+          style={[styles.addButton, { top: Math.max(insets.top + 18, 34) - 2 }]}
+          onPress={openCreateForm}
+          hitSlop={8}
+          accessibilityLabel='Thêm danh mục'
+        >
+          <Ionicons name='add' size={28} color='#0B1D17' />
+        </Pressable>
+      </View>
+
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 18, 34) }]}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 92 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Pressable onPress={() => router.replace('/')} hitSlop={8} style={styles.backButton}>
-            <Ionicons name='arrow-back' size={27} color='#0B1D17' />
-          </Pressable>
-          <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
-            DANH MỤC
-          </Text>
-          <Pressable
-            style={styles.addButton}
-            onPress={openCreateForm}
-            hitSlop={8}
-            accessibilityLabel='Thêm danh mục'
-          >
-            <Ionicons name='add' size={28} color='#0B1D17' />
-          </Pressable>
-        </View>
-
         <View style={styles.filterRow}>
           {typeFilters.map((filter) => (
             <Pressable
@@ -144,12 +148,12 @@ export default function CategoriesScreen() {
         </View>
 
         <View style={styles.searchBox}>
-          <Ionicons name='search' size={20} color='#49685B' />
+          <Ionicons name='search' size={20} color='#245442' />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder='Tìm kiếm theo tên danh mục'
-            placeholderTextColor='#7C9086'
+            placeholderTextColor='#245442'
             style={styles.searchInput}
             autoCapitalize='none'
             autoCorrect={false}
@@ -160,14 +164,14 @@ export default function CategoriesScreen() {
               onPress={() => setSearchQuery('')}
               hitSlop={8}
             >
-              <Ionicons name='close-circle' size={19} color='#49685B' />
+              <Ionicons name='close-circle' size={19} color='#245442' />
             </Pressable>
           ) : null}
         </View>
 
         {isLoading ? (
           <View style={styles.stateBox}>
-            <ActivityIndicator color='#0A251B' />
+            <ActivityIndicator color='#12392C' />
             <Text style={styles.stateText}>Đang tải danh mục...</Text>
           </View>
         ) : null}
@@ -180,7 +184,7 @@ export default function CategoriesScreen() {
 
         {!isLoading && visibleCategories.length === 0 ? (
           <View style={styles.stateBox}>
-            <MaterialCommunityIcons name='tag-outline' size={32} color='#49685B' />
+            <MaterialCommunityIcons name='tag-outline' size={32} color='#245442' />
             <Text style={styles.stateText}>
               {searchQuery.trim()
                 ? 'Không tìm thấy danh mục phù hợp.'
@@ -323,7 +327,7 @@ function CategoryFormModal({
             value={name}
             onChangeText={setName}
             placeholder='Nhập tên danh mục'
-            placeholderTextColor='#7C9086'
+            placeholderTextColor='#245442'
             style={styles.input}
           />
 
@@ -378,12 +382,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    marginBottom: 22,
+    paddingHorizontal: 22,
+    paddingBottom: 18,
+    backgroundColor: '#F7FBF5',
+    position: 'relative',
   },
   backButton: {
     position: 'absolute',
-    left: 0,
-    top: 0,
+    left: 22,
     justifyContent: 'center',
     zIndex: 2,
   },
@@ -396,8 +402,7 @@ const styles = StyleSheet.create({
   },
   addButton: {
     position: 'absolute',
-    right: 0,
-    top: -2,
+    right: 22,
     width: 34,
     height: 34,
     alignItems: 'center',
@@ -411,12 +416,12 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     borderRadius: 999,
-    backgroundColor: '#EAF3E6',
+    backgroundColor: '#CFECC2',
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
   filterChipActive: {
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
   },
   filterChipText: {
     color: '#12392C',
@@ -431,7 +436,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 48,
     borderRadius: 8,
-    backgroundColor: '#EAF3E6',
+    backgroundColor: '#CFECC2',
     paddingHorizontal: 14,
     marginBottom: 16,
   },
@@ -496,7 +501,7 @@ const styles = StyleSheet.create({
   stateBox: {
     minHeight: 90,
     borderRadius: 8,
-    backgroundColor: '#EAF3E6',
+    backgroundColor: '#CFECC2',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
@@ -504,7 +509,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   stateText: {
-    color: '#49685B',
+    color: '#245442',
     fontSize: 13,
     fontWeight: '800',
     textAlign: 'center',
@@ -541,7 +546,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   inputLabel: {
-    color: '#23473A',
+    color: '#245442',
     fontSize: 13,
     fontWeight: '900',
     marginBottom: 8,
@@ -565,12 +570,12 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 42,
     borderRadius: 999,
-    backgroundColor: '#EAF3E6',
+    backgroundColor: '#CFECC2',
     alignItems: 'center',
     justifyContent: 'center',
   },
   typeButtonActive: {
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
   },
   typeButtonText: {
     color: '#12392C',
@@ -583,7 +588,7 @@ const styles = StyleSheet.create({
   saveButton: {
     minHeight: 48,
     borderRadius: 999,
-    backgroundColor: '#128A3D',
+    backgroundColor: '#79C77C',
     alignItems: 'center',
     justifyContent: 'center',
   },

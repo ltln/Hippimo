@@ -31,30 +31,30 @@ export default function BudgetsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top + 12, 28) }]}>
+        <Text style={styles.headerTitle}>NGÂN SÁCH</Text>
+        <View style={[styles.headerActions, { top: Math.max(insets.top + 12, 28) }]}>
+          <Pressable
+            onPress={() => setShowFilters((current) => !current)}
+            hitSlop={8}
+            style={styles.headerIconButton}
+          >
+            <Ionicons name='search' size={22} color='#081A13' />
+          </Pressable>
+          <Pressable
+            hitSlop={8}
+            style={styles.headerIconButton}
+            onPress={() => router.push('/add-budget')}
+          >
+            <Ionicons name='add' size={26} color='#081A13' />
+          </Pressable>
+        </View>
+      </View>
+
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 12, 28) }]}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 92 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>NGÂN SÁCH</Text>
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => setShowFilters((current) => !current)}
-              hitSlop={8}
-              style={styles.headerIconButton}
-            >
-              <Ionicons name='search' size={22} color='#081A13' />
-            </Pressable>
-            <Pressable
-              hitSlop={8}
-              style={styles.headerIconButton}
-              onPress={() => router.push('/add-budget')}
-            >
-              <Ionicons name='add' size={26} color='#081A13' />
-            </Pressable>
-          </View>
-        </View>
-
         {showFilters && (
           <View style={styles.controlCard}>
             <Text style={styles.fieldLabel}>Chu kỳ</Text>
@@ -74,12 +74,12 @@ export default function BudgetsScreen() {
 
             <Text style={[styles.fieldLabel, { marginTop: 15 }]}>Tìm kiếm tên hoặc danh mục</Text>
             <View style={styles.searchField}>
-              <Ionicons name='search' size={18} color='#49685B' />
+              <Ionicons name='search' size={18} color='#245442' />
               <TextInput
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 placeholder='VD: Ăn uống, Xăng...'
-                placeholderTextColor='#7C9086'
+                placeholderTextColor='#245442'
                 style={styles.searchInput}
               />
             </View>

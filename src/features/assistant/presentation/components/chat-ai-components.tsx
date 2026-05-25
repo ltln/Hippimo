@@ -81,7 +81,7 @@ export function ChatBubble({ message }: { message: ChatMessage }) {
     <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
       {!isUser ? (
         <RainbowFrame style={styles.botAvatarFrame} innerStyle={styles.botAvatarInner}>
-          <MaterialCommunityIcons name='robot-happy-outline' size={17} color='#08251A' />
+          <MaterialCommunityIcons name='robot-happy-outline' size={17} color='#12392C' />
         </RainbowFrame>
       ) : null}
 

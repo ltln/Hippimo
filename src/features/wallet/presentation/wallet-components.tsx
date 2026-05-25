@@ -1,13 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, Text, View, type StyleProp, type TextStyle } from 'react-native'
 
+import type { TransactionItem } from '@/features/transaction/data/transaction-context'
 import {
   formatVnd,
   getWalletTypeMeta,
   type WalletItem,
 } from '@/features/wallet/data/wallet-context'
-import type { TransactionItem } from '@/features/transaction/data/transaction-context'
 import { styles } from '@/features/wallet/presentation/wallet.styles'
 
 export function WalletCard({
@@ -25,14 +25,23 @@ export function WalletCard({
   return (
     <View style={styles.walletCard}>
       <View style={styles.cardHeader}>
-        <Text style={styles.walletName}>{wallet.name}</Text>
+        <View style={styles.walletHeaderText}>
+          <Text style={styles.walletName}>{wallet.name}</Text>
+          <View style={styles.walletTypeRow}>
+            <View style={styles.walletTypeIcon}>
+              <MaterialCommunityIcons name={walletType.icon} size={18} color='#DDF2D2' />
+            </View>
+            <Text style={styles.walletTypeLabel}>{walletType.label}</Text>
+          </View>
+        </View>
+
         <View style={styles.cardActions}>
           <Pressable
             onPress={() => router.push({ pathname: '/edit-wallet', params: { id: wallet.id } })}
             hitSlop={8}
             style={styles.iconButton}
           >
-            <MaterialCommunityIcons name='tune-variant' size={25} color='#CDECD9' />
+            <MaterialCommunityIcons name='tune-variant' size={25} color='#E9F8E2' />
           </Pressable>
           <Pressable onPress={onDelete} hitSlop={8} style={styles.iconButton}>
             <MaterialCommunityIcons name='trash-can-outline' size={24} color='#FFB0A4' />
@@ -43,24 +52,29 @@ export function WalletCard({
       <View style={styles.walletSummary}>
         <View style={styles.balanceHighlight}>
           <Text style={styles.balanceLabel}>SỐ DƯ HIỆN TẠI</Text>
-          <Text style={styles.balanceValue}>{formatVnd(wallet.balance)}</Text>
+          <MoneyText
+            value={formatVnd(wallet.balance)}
+            valueStyle={styles.balanceValue}
+            currencyStyle={styles.balanceCurrency}
+          />
         </View>
 
         <View style={styles.walletMetaBlock}>
-          <View style={styles.walletTypeRow}>
-            <View style={styles.walletTypeIcon}>
-              <MaterialCommunityIcons name={walletType.icon} size={20} color='#BFEACD' />
-            </View>
-            <Text style={styles.walletTypeLabel}>{walletType.label}</Text>
-          </View>
-
           <View style={styles.walletMetric}>
             <Text style={styles.incomeLabel}>TỔNG THU</Text>
-            <Text style={styles.incomeValue}>{formatVnd(totals.income)}</Text>
+            <MoneyText
+              value={formatVnd(totals.income)}
+              valueStyle={styles.incomeValue}
+              currencyStyle={styles.incomeCurrency}
+            />
           </View>
           <View style={styles.walletMetric}>
             <Text style={styles.spentLabel}>TỔNG CHI</Text>
-            <Text style={styles.spentValue}>{formatVnd(totals.expense)}</Text>
+            <MoneyText
+              value={formatVnd(totals.expense)}
+              valueStyle={styles.spentValue}
+              currencyStyle={styles.spentCurrency}
+            />
           </View>
         </View>
       </View>
@@ -73,6 +87,25 @@ export function WalletCard({
         <Text style={styles.emptyText}>Chưa có giao dịch trong ví này.</Text>
       ) : null}
     </View>
+  )
+}
+
+function MoneyText({
+  currencyStyle,
+  value,
+  valueStyle,
+}: {
+  currencyStyle: StyleProp<TextStyle>
+  value: string
+  valueStyle: StyleProp<TextStyle>
+}) {
+  const [amount, currency] = value.split(/\s+(?=VND$)/)
+
+  return (
+    <Text style={valueStyle} numberOfLines={1} adjustsFontSizeToFit>
+      {amount}
+      {currency ? <Text style={currencyStyle}> {currency}</Text> : null}
+    </Text>
   )
 }
 

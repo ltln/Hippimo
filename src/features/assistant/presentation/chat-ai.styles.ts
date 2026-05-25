@@ -53,7 +53,7 @@ export const styles = StyleSheet.create({
   },
   promptFrameInner: {
     borderRadius: 12,
-    backgroundColor: '#128A3F',
+    backgroundColor: '#79C77C',
   },
   promptCard: {
     minHeight: 112,
@@ -82,7 +82,7 @@ export const styles = StyleSheet.create({
     gap: 10,
     paddingLeft: 18,
     paddingRight: 8,
-    backgroundColor: '#063D2D',
+    backgroundColor: '#12392C',
   },
   input: {
     flex: 1,
@@ -99,7 +99,7 @@ export const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0B5B3F',
+    backgroundColor: '#12392C',
   },
   chatList: {
     gap: 12,
@@ -136,11 +136,11 @@ export const styles = StyleSheet.create({
   },
   userBubble: {
     borderBottomRightRadius: 6,
-    backgroundColor: '#063D2D',
+    backgroundColor: '#12392C',
   },
   assistantBubble: {
     borderBottomLeftRadius: 6,
-    backgroundColor: '#EDF8F1',
+    backgroundColor: '#DDF2D2',
   },
   messageText: {
     fontSize: 13,

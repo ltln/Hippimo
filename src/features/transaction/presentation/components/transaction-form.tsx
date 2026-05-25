@@ -193,13 +193,6 @@ export function TransactionForm({
     setAmount(String(nextAmount))
   }
 
-  const handleReceiptScan = () => {
-    Alert.alert(
-      'Quét hóa đơn',
-      'Phương án tối ưu là chụp hoặc chọn ảnh hóa đơn trước, sau đó OCR để tự điền số tiền, ngày và ghi chú. Cách này nhẹ app hơn, ít lỗi hơn live camera OCR và dễ mở rộng về sau.',
-    )
-  }
-
   const handleSave = () => {
     const numericAmount = Number.parseInt(amount || '0', 10)
 
@@ -262,15 +255,6 @@ export function TransactionForm({
           </Text>
           <View style={styles.headerSpacer} />
         </View>
-
-        <Pressable style={styles.card} onPress={handleReceiptScan}>
-          <View style={styles.scanIconWrap}>
-            <MaterialCommunityIcons name='barcode-scan' size={40} color='#FFFFFF' />
-          </View>
-          <View style={styles.receiptPill}>
-            <Text style={styles.receiptPillText}>Quét hóa đơn</Text>
-          </View>
-        </Pressable>
 
         <View style={[styles.card, styles.amountCard]}>
           <View style={styles.amountControls}>
@@ -385,7 +369,7 @@ export function TransactionForm({
               }}
               disabled={mode !== 'expense'}
             >
-              <Ionicons name='list' size={22} color={mode === 'expense' ? '#FFFFFF' : '#B8CEC3'} />
+              <Ionicons name='list' size={22} color={mode === 'expense' ? '#FFFFFF' : '#DDF2D2'} />
             </Pressable>
           </View>
         </View>
@@ -398,7 +382,7 @@ export function TransactionForm({
                 value={transactionDate}
                 onChangeText={setTransactionDate}
                 placeholder='dd/mm/yyyy'
-                placeholderTextColor='#CFE8DA'
+                placeholderTextColor='#DDF2D2'
                 keyboardType='numbers-and-punctuation'
                 style={styles.dateInput}
               />
@@ -414,7 +398,7 @@ export function TransactionForm({
               noteRef.current = text
             }}
             placeholder='Nhập ghi chú cho giao dịch'
-            placeholderTextColor='#B8CEC3'
+            placeholderTextColor='#DDF2D2'
             style={styles.noteInput}
             multiline={true}
             submitBehavior='blurAndSubmit'
@@ -422,7 +406,7 @@ export function TransactionForm({
             spellCheck={false}
           />
           <View style={styles.noteHintRow}>
-            <MaterialCommunityIcons name='emoticon-excited-outline' size={18} color='#072D20' />
+            <MaterialCommunityIcons name='emoticon-excited-outline' size={18} color='#12392C' />
             <Text style={styles.noteHint}>Có vẻ bạn đang chi cho ăn uống ?</Text>
           </View>
         </View>
@@ -529,12 +513,12 @@ function SelectorBlock({
       {interactive ? (
         <Pressable style={styles.selectorPill} onPress={onPress}>
           <Text style={styles.selectorValue}>{selectedOption?.label ?? value}</Text>
-          {!hideChevron && <Ionicons name='chevron-down' size={16} color='#E6FFF2' />}
+          {!hideChevron && <Ionicons name='chevron-down' size={16} color='#E9F8E2' />}
         </Pressable>
       ) : (
         <View style={styles.selectorPill}>
           <Text style={styles.selectorValue}>{selectedOption?.label ?? value}</Text>
-          {!hideChevron && <Ionicons name='chevron-down' size={16} color='#E6FFF2' />}
+          {!hideChevron && <Ionicons name='chevron-down' size={16} color='#E9F8E2' />}
         </View>
       )}
     </View>
@@ -568,7 +552,7 @@ function SelectionModal({
               <View style={styles.modalOptionContent}>
                 {option.icon || option.color ? (
                   <View
-                    style={[styles.modalOptionIcon, { backgroundColor: option.color ?? '#1B4D39' }]}
+                    style={[styles.modalOptionIcon, { backgroundColor: option.color ?? '#12392C' }]}
                   >
                     {option.icon ? (
                       <MaterialCommunityIcons
@@ -581,7 +565,7 @@ function SelectionModal({
                 ) : null}
                 <Text style={styles.modalOptionText}>{option.label}</Text>
               </View>
-              <Ionicons name='chevron-forward' size={16} color='#1B4D39' />
+              <Ionicons name='chevron-forward' size={16} color='#12392C' />
             </Pressable>
           ))}
         </Pressable>
@@ -593,7 +577,7 @@ function SelectionModal({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F4F1EF',
+    backgroundColor: '#F7FBF5',
   },
   content: {
     paddingHorizontal: 14,
@@ -622,28 +606,10 @@ const styles = StyleSheet.create({
     width: 36,
   },
   card: {
-    backgroundColor: '#198B3F',
+    backgroundColor: '#79C77C',
     borderRadius: 14,
     padding: 14,
     marginBottom: 14,
-  },
-  scanIconWrap: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  receiptPill: {
-    alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginTop: 8,
-  },
-  receiptPillText: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#0A1D16',
   },
   amountCard: {
     paddingVertical: 18,
@@ -657,11 +623,11 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#083B2A',
+    backgroundColor: '#12392C',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#0E5A40',
+    borderColor: '#12392C',
   },
   amountCenter: {
     flex: 1,
@@ -686,7 +652,7 @@ const styles = StyleSheet.create({
   amountCurrency: {
     marginTop: 2,
     fontSize: 15,
-    color: '#E8FFF0',
+    color: '#E9F8E2',
   },
   segmentRow: {
     flexDirection: 'row',
@@ -696,17 +662,17 @@ const styles = StyleSheet.create({
   },
   segmentButton: {
     borderRadius: 999,
-    backgroundColor: '#7F9B90',
+    backgroundColor: '#CFECC2',
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   segmentButtonActive: {
-    backgroundColor: '#050505',
+    backgroundColor: '#12392C',
   },
   segmentLabel: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#F6FFFA',
+    color: '#12392C',
   },
   segmentLabelActive: {
     color: '#FFFFFF',
@@ -740,7 +706,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 7,
@@ -756,26 +722,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   datePill: {
-    backgroundColor: '#063629',
+    alignSelf: 'center',
+    backgroundColor: '#12392C',
     borderRadius: 999,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 10,
   },
   dateInput: {
-    minWidth: 160,
-    fontSize: 24,
+    width: 148,
+    fontSize: 22,
     fontWeight: '900',
     color: '#FFFFFF',
     textAlign: 'center',
     paddingVertical: 0,
   },
   noteInput: {
-    backgroundColor: '#F2F5F2',
+    backgroundColor: '#DDF2D2',
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 9,
     fontSize: 14,
-    color: '#072D20',
+    color: '#12392C',
   },
   noteHintRow: {
     marginTop: 12,
@@ -786,10 +753,10 @@ const styles = StyleSheet.create({
   noteHint: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#072D20',
+    color: '#12392C',
   },
   saveButton: {
-    backgroundColor: '#072D20',
+    backgroundColor: '#12392C',
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
@@ -811,7 +778,7 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: '100%',
-    backgroundColor: '#F4F1EF',
+    backgroundColor: '#F7FBF5',
     borderRadius: 18,
     padding: 16,
   },
@@ -848,10 +815,10 @@ const styles = StyleSheet.create({
   modalOptionText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1B4D39',
+    color: '#12392C',
   },
   input: {
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     borderRadius: 12,
     padding: 12,
     color: '#FFFFFF',
@@ -865,7 +832,7 @@ const styles = StyleSheet.create({
   },
   categoryInput: {
     flex: 1,
-    backgroundColor: '#F2F5F2',
+    backgroundColor: '#DDF2D2',
     borderRadius: 12,
     paddingHorizontal: 14,
     minHeight: 44,
@@ -873,17 +840,17 @@ const styles = StyleSheet.create({
   },
   categoryInputText: {
     fontSize: 14,
-    color: '#072D20',
+    color: '#12392C',
     fontWeight: '700',
   },
   categoryInputPlaceholder: {
-    color: '#B8CEC3',
+    color: '#245442',
   },
   categoryListButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     borderRadius: 12,
     width: 44,
     height: 44,

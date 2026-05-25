@@ -5,7 +5,7 @@ import { Typography } from '@/config/constants/theme'
 export const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F4F1EF',
+    backgroundColor: '#F7FBF5',
   },
   content: {
     paddingHorizontal: 10,
@@ -15,8 +15,10 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingHorizontal: 12,
-    marginBottom: 22,
+    paddingHorizontal: 22,
+    paddingBottom: 18,
+    backgroundColor: '#F7FBF5',
+    position: 'relative',
   },
   headerTitle: {
     flex: 1,
@@ -27,7 +29,7 @@ export const styles = StyleSheet.create({
   },
   headerActions: {
     position: 'absolute',
-    right: 12,
+    right: 22,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -37,7 +39,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   controlCard: {
-    backgroundColor: '#E7E0D9',
+    backgroundColor: '#CFECC2',
     borderRadius: 16,
     padding: 14,
     marginBottom: 16,
@@ -57,7 +59,7 @@ export const styles = StyleSheet.create({
     marginTop: 14,
     fontSize: 13,
     fontWeight: '700',
-    color: '#23473A',
+    color: '#245442',
   },
   fieldSpacing: {
     marginTop: 16,
@@ -72,15 +74,15 @@ export const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 9,
-    backgroundColor: '#F7F3EF',
+    backgroundColor: '#E9F8E2',
   },
   chipActive: {
-    backgroundColor: '#0A3A2A',
+    backgroundColor: '#12392C',
   },
   chipText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#164634',
+    color: '#12392C',
   },
   chipTextActive: {
     color: '#FFFFFF',
@@ -90,7 +92,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#F7F3EF',
+    backgroundColor: '#E9F8E2',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -104,22 +106,20 @@ export const styles = StyleSheet.create({
   detailCard: {
     borderRadius: 14,
     paddingHorizontal: 14,
-    paddingTop: 10,
+    paddingTop: 12,
     paddingBottom: 14,
     marginBottom: 16,
   },
   detailCardLight: {
-    backgroundColor: '#179041',
+    backgroundColor: '#79C77C',
   },
   detailCardDark: {
-    backgroundColor: '#08251A',
+    backgroundColor: '#12392C',
   },
   detailActions: {
-    alignSelf: 'flex-end',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 4,
   },
   editButton: {
     alignItems: 'center',
@@ -131,11 +131,40 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10,
   },
-  detailAmount: {
+  detailHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  detailCategoryRow: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  detailCategoryIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailCategoryTitle: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  detailAmount: {
+    marginTop: 16,
     fontSize: 26,
     fontWeight: '900',
     lineHeight: 32,
+  },
+  detailAmountCurrency: {
+    fontSize: 17,
+    color: 'rgba(255, 232, 226, 0.72)',
   },
   detailIconWrap: {
     alignItems: 'center',
@@ -151,7 +180,7 @@ export const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0A4D2E',
+    backgroundColor: '#12392C',
   },
   detailFooterTitle: {
     fontSize: 14,
@@ -165,10 +194,14 @@ export const styles = StyleSheet.create({
     gap: 16,
   },
   transferAmount: {
+    marginTop: 16,
     fontSize: 30,
     fontWeight: '900',
     lineHeight: 34,
-    textAlign: 'center',
+  },
+  transferCurrency: {
+    fontSize: 19,
+    color: 'rgba(185, 255, 208, 0.72)',
   },
   transferIconsCentered: {
     flexDirection: 'row',
@@ -176,6 +209,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     flexWrap: 'wrap',
+    marginTop: 10,
   },
   transferPill: {
     flexDirection: 'row',
@@ -217,19 +251,19 @@ export const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 1,
-    borderColor: '#E7FFF0',
+    borderColor: '#E9F8E2',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
   },
   tipBadgeText: {
-    color: '#E7FFF0',
+    color: '#E9F8E2',
     fontSize: 10,
     fontWeight: '900',
   },
   tipText: {
     flex: 1,
-    color: '#ECFFF5',
+    color: '#E9F8E2',
     fontSize: 10,
     fontStyle: 'italic',
     lineHeight: 14,

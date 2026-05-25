@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   item: {
     minHeight: 62,
     borderRadius: 5,
-    backgroundColor: '#128A3D',
+    backgroundColor: '#79C77C',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 20,

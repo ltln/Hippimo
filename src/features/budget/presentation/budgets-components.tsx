@@ -25,7 +25,7 @@ export function BudgetCard({ budget, onDelete }: { budget: BudgetItem; onDelete:
   return (
     <View style={styles.budgetCard}>
       <View style={styles.budgetHeader}>
-        <View style={[styles.budgetIconBg, { backgroundColor: budget.iconColor ?? '#198B3F' }]}>
+        <View style={[styles.budgetIconBg, { backgroundColor: budget.iconColor ?? '#79C77C' }]}>
           <MaterialCommunityIcons name={budget.icon} size={24} color='#FFFFFF' />
         </View>
         <View style={styles.budgetTitleArea}>
@@ -51,7 +51,7 @@ export function BudgetCard({ budget, onDelete }: { budget: BudgetItem; onDelete:
           <View
             style={[
               styles.progressBarFill,
-              { width: `${percent * 100}%`, backgroundColor: isOver ? '#FF5252' : '#179041' },
+              { width: `${percent * 100}%`, backgroundColor: isOver ? '#FF5252' : '#79C77C' },
             ]}
           />
         </View>

@@ -36,12 +36,30 @@ export default function RootLayout() {
                     >
                       <Stack.Screen name='login' options={{ headerShown: false }} />
                       <Stack.Screen name='(tabs)' options={{ headerShown: false }} />
-                      <Stack.Screen name='add-transaction' options={{ headerShown: false }} />
-                      <Stack.Screen name='edit-transaction' options={{ headerShown: false }} />
-                      <Stack.Screen name='add-wallet' options={{ headerShown: false }} />
-                      <Stack.Screen name='edit-wallet' options={{ headerShown: false }} />
-                      <Stack.Screen name='add-budget' options={{ headerShown: false }} />
-                      <Stack.Screen name='edit-budget' options={{ headerShown: false }} />
+                      <Stack.Screen
+                        name='add-transaction'
+                        options={{ headerShown: false, animationDuration: 100 }}
+                      />
+                      <Stack.Screen
+                        name='edit-transaction'
+                        options={{ headerShown: false, animationDuration: 100 }}
+                      />
+                      <Stack.Screen
+                        name='add-wallet'
+                        options={{ headerShown: false, animationDuration: 100 }}
+                      />
+                      <Stack.Screen
+                        name='edit-wallet'
+                        options={{ headerShown: false, animationDuration: 100 }}
+                      />
+                      <Stack.Screen
+                        name='add-budget'
+                        options={{ headerShown: false, animationDuration: 100 }}
+                      />
+                      <Stack.Screen
+                        name='edit-budget'
+                        options={{ headerShown: false, animationDuration: 100 }}
+                      />
                       <Stack.Screen name='account-info' options={{ headerShown: false }} />
                       <Stack.Screen name='oauthredirect' options={{ headerShown: false }} />
                       <Stack.Screen

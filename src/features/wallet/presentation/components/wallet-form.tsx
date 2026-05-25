@@ -106,7 +106,7 @@ export function WalletForm({ title, submitLabel, initialWallet, onSubmit }: Wall
                 >
                   <MaterialCommunityIcons
                     name={walletType.icon}
-                    size={25}
+                    size={22}
                     color={active ? '#FFFFFF' : '#0B1D17'}
                   />
                   <Text style={[styles.typeText, active && styles.typeTextActive]}>
@@ -119,7 +119,7 @@ export function WalletForm({ title, submitLabel, initialWallet, onSubmit }: Wall
         </View>
 
         <View style={[styles.card, styles.amountCard]}>
-          <Text style={styles.sectionTitle}>SỐ DƯ BAN ĐẦU</Text>
+          <Text style={styles.sectionTitle}>SỐ DƯ VÍ</Text>
           {isEditing ? (
             <View style={styles.amountCenter}>
               <Text style={styles.amountDisplay}>{displayBalance}</Text>
@@ -128,7 +128,7 @@ export function WalletForm({ title, submitLabel, initialWallet, onSubmit }: Wall
           ) : (
             <View style={styles.amountControls}>
               <Pressable style={styles.amountButton} onPress={() => adjustBalance(-1000)}>
-                <Ionicons name='remove' size={26} color='#FF5148' />
+                <Ionicons name='remove' size={22} color='#FF5148' />
               </Pressable>
 
               <Pressable style={styles.amountCenter} onPress={() => setBalanceFocused(true)}>
@@ -149,7 +149,7 @@ export function WalletForm({ title, submitLabel, initialWallet, onSubmit }: Wall
               </Pressable>
 
               <Pressable style={styles.amountButton} onPress={() => adjustBalance(1000)}>
-                <Ionicons name='add' size={28} color='#F6C63D' />
+                <Ionicons name='add' size={22} color='#F6C63D' />
               </Pressable>
             </View>
           )}
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     width: 42,
   },
   card: {
-    backgroundColor: '#128A3D',
+    backgroundColor: '#79C77C',
     borderRadius: 6,
     padding: 14,
     marginBottom: 34,
@@ -235,20 +235,20 @@ const styles = StyleSheet.create({
   },
   typePill: {
     width: '46%',
-    minHeight: 45,
+    minHeight: 43,
     borderRadius: 999,
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
-    paddingHorizontal: 8,
+    gap: 6,
+    paddingHorizontal: 7,
   },
   typePillActive: {
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
   },
   typeText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '900',
     color: '#0B1D17',
   },
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   amountCard: {
-    paddingVertical: 22,
+    paddingVertical: 18,
   },
   amountControls: {
     flexDirection: 'row',
@@ -264,14 +264,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   amountButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#128A3D',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#79C77C',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: '#073B2C',
+    borderWidth: 3,
+    borderColor: '#12392C',
   },
   amountCenter: {
     flex: 1,
@@ -279,25 +279,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   amountInput: {
-    minWidth: 160,
-    fontSize: 34,
+    minWidth: 170,
+    fontSize: 25,
     fontWeight: '900',
     color: '#FFFFFF',
     paddingVertical: 0,
     textAlign: 'center',
   },
   amountDisplay: {
-    fontSize: 34,
+    fontSize: 25,
     fontWeight: '900',
     color: '#FFFFFF',
   },
   amountCurrency: {
-    marginTop: 1,
-    fontSize: 18,
-    color: '#E8FFF0',
+    marginTop: 2,
+    fontSize: 15,
+    color: '#E9F8E2',
   },
   saveButton: {
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',

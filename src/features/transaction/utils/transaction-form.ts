@@ -251,7 +251,7 @@ export function getCategoryIcon(category: string): TransactionItem['icon'] {
 
 export function getCategoryColor(category: string) {
   const upper = category.toUpperCase()
-  if (upper === 'TIỀN MẶT') return '#128A3D'
+  if (upper === 'TIỀN MẶT') return '#79C77C'
   if (upper === 'NGÂN HÀNG') return '#3D94C6'
   if (upper === 'TIẾT KIỆM') return '#F0C65A'
   if (upper === 'VÍ ĐIỆN TỬ') return '#7E63F4'

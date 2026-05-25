@@ -17,7 +17,7 @@ export default function TabLayout() {
         tabBarStyle: {
           height: 72,
           borderTopWidth: 0,
-          backgroundColor: '#0A251B',
+          backgroundColor: '#12392C',
           elevation: 0,
           shadowOpacity: 0,
           overflow: 'visible',
@@ -31,7 +31,7 @@ export default function TabLayout() {
           fontWeight: '800',
         },
         tabBarActiveTintColor: '#FFFFFF',
-        tabBarInactiveTintColor: '#8A9D93',
+        tabBarInactiveTintColor: '#DDF2D2',
       }}
     >
       <Tabs.Screen
@@ -114,10 +114,10 @@ const styles = StyleSheet.create({
     borderRadius: 31,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#16A34A',
+    backgroundColor: '#79C77C',
     borderWidth: 4,
     borderColor: '#FFFFFF',
-    shadowColor: '#16A34A',
+    shadowColor: '#79C77C',
     shadowOpacity: 0.35,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },

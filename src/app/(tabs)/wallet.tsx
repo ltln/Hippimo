@@ -32,30 +32,30 @@ export default function WalletScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top + 12, 28) }]}>
+        <Text style={styles.headerTitle}>QUẢN LÝ VÍ</Text>
+        <View style={[styles.headerActions, { top: Math.max(insets.top + 12, 28) }]}>
+          <Pressable
+            onPress={() => setShowSearch((current) => !current)}
+            hitSlop={8}
+            style={styles.headerIconButton}
+          >
+            <Ionicons name='search' size={28} color='#050505' />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/add-wallet')}
+            hitSlop={8}
+            style={styles.headerIconButton}
+          >
+            <Ionicons name='add' size={34} color='#050505' />
+          </Pressable>
+        </View>
+      </View>
+
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 12, 28) }]}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 92 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>QUẢN LÝ VÍ</Text>
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => setShowSearch((current) => !current)}
-              hitSlop={8}
-              style={styles.headerIconButton}
-            >
-              <Ionicons name='search' size={28} color='#050505' />
-            </Pressable>
-            <Pressable
-              onPress={() => router.push('/add-wallet')}
-              hitSlop={8}
-              style={styles.headerIconButton}
-            >
-              <Ionicons name='add' size={34} color='#050505' />
-            </Pressable>
-          </View>
-        </View>
-
         {showSearch ? (
           <View style={styles.searchField}>
             <Ionicons name='search' size={18} color='#466456' />

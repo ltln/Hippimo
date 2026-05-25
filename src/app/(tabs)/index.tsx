@@ -34,17 +34,7 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 18, 34) }]}>
-        <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
-          TỔNG QUAN
-        </Text>
-        <View style={[styles.headerActions, { top: Math.max(insets.top + 18, 34) }]}>
-          <Pressable
-            style={styles.headerIconButton}
-            accessibilityLabel='Chat AI'
-            onPress={() => router.push('/(tabs)/chat_ai')}
-          >
-            <Ionicons name='sparkles-outline' size={22} color='#12392C' />
-          </Pressable>
+        <View style={[styles.headerLeftAction, { top: Math.max(insets.top + 18, 34) + 2 }]}>
           <Pressable
             style={styles.headerIconButton}
             accessibilityLabel='Danh mục'
@@ -52,6 +42,19 @@ export default function DashboardScreen() {
           >
             <MaterialCommunityIcons name='tag-outline' size={21} color='#12392C' />
           </Pressable>
+        </View>
+        <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
+          TỔNG QUAN
+        </Text>
+        <View style={[styles.headerActions, { top: Math.max(insets.top + 18, 34) + 2 }]}>
+          <Pressable
+            style={styles.headerIconButton}
+            accessibilityLabel='Chat AI'
+            onPress={() => router.push('/(tabs)/chat_ai')}
+          >
+            <Ionicons name='sparkles-outline' size={22} color='#12392C' />
+          </Pressable>
+
           <Pressable
             style={styles.headerIconButton}
             accessibilityLabel='Cài đặt'
@@ -242,9 +245,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  headerLeftAction: {
+    position: 'absolute',
+    left: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerIconButton: {
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 24,
+    minHeight: 24,
   },
   headerTitle: {
     flex: 1,
