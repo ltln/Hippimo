@@ -1,5 +1,7 @@
 import { StyleSheet } from 'react-native'
 
+import { Typography } from '@/config/constants/theme'
+
 export const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F4F1EF' },
   content: { paddingHorizontal: 16, paddingBottom: 30 },
@@ -9,7 +11,13 @@ export const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     marginBottom: 22,
   },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 24, fontWeight: '900', color: '#081A13' },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: Typography.screenHeaderFontSize,
+    fontWeight: '900',
+    color: '#081A13',
+  },
   headerActions: { position: 'absolute', right: 0, flexDirection: 'row', gap: 12 },
   headerIconButton: { padding: 4 },
   controlCard: { backgroundColor: '#E7E0D9', borderRadius: 16, padding: 16, marginBottom: 16 },

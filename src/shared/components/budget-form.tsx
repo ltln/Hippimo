@@ -13,12 +13,8 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import {
-  mapCategoriesToOptions,
-  type CategoryOption,
-  useCategories,
-} from '@/features/category/data/use-categories'
-import { createCategory } from '@/features/category/data/category-api'
+import { Typography } from '@/config/constants/theme'
+import { mapCategoriesToOptions, useCategories } from '@/features/category/data/use-categories'
 import { useAuth } from '@/features/auth/data/auth-context'
 import {
   getCategoryColor,
@@ -26,15 +22,6 @@ import {
   normalizeDate,
 } from '@/features/transaction/utils/transaction-form'
 import type { BudgetItem, BudgetPeriod } from '@/shared/contexts/budget-context'
-
-const defaultCategoryOptions: CategoryOption[] = [
-  { value: 'Ăn uống', label: 'Ăn uống', id: '' },
-  { value: 'Di chuyển', label: 'Di chuyển', id: '' },
-  { value: 'Nhà cửa', label: 'Nhà cửa', id: '' },
-  { value: 'Giải trí', label: 'Giải trí', id: '' },
-  { value: 'Mua sắm', label: 'Mua sắm', id: '' },
-  { value: 'Làm đẹp', label: 'Làm đẹp', id: '' },
-]
 
 const periodOptions = [
   { value: 'weekly', label: 'Hàng tuần' },
@@ -152,7 +139,7 @@ export function BudgetForm({
   const [budgetTitle, setBudgetTitle] = useState(initialValues?.title || '')
   const [amount, setAmount] = useState(String(initialValues?.amount || '0'))
   const [period, setPeriod] = useState<BudgetPeriod>(initialValues?.period || 'weekly')
-  const [category, setCategory] = useState(initialValues?.category || 'Ăn uống')
+  const [category, setCategory] = useState(initialValues?.category || '')
   const [selectedCategoryId, setSelectedCategoryId] = useState(initialValues?.categoryId)
   const [startDate, setStartDate] = useState(
     initialValues?.startDate || new Date().toISOString().split('T')[0],
@@ -162,14 +149,7 @@ export function BudgetForm({
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const categoryOptions = useMemo(() => {
-    const options = mapCategoriesToOptions(categories)
-    if (accessToken) {
-      return options
-    }
-
-    return options.length ? options : defaultCategoryOptions
-  }, [accessToken, categories])
+  const categoryOptions = useMemo(() => mapCategoriesToOptions(categories), [categories])
 
   const selectedCategory = useMemo(() => {
     if (!categoryOptions.length) {
@@ -255,18 +235,6 @@ export function BudgetForm({
         let refreshedCategory =
           refreshedCategories.find((item) => item.name === category) ?? refreshedCategories[0]
 
-        if (!refreshedCategory && category.trim()) {
-          refreshedCategory = await createCategory(
-            {
-              name: category.trim(),
-              type: 'EXPENSE',
-              icon: getCategoryIcon(category),
-              color: getCategoryColor(category),
-            },
-            accessToken,
-          )
-        }
-
         if (refreshedCategory) {
           setCategory(refreshedCategory.name)
           setSelectedCategoryId(refreshedCategory.categoryId)
@@ -330,7 +298,9 @@ export function BudgetForm({
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name='arrow-back' size={24} color='#0B1D17' />
           </Pressable>
-          <Text style={styles.headerTitle}>{title}</Text>
+          <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
+            {title}
+          </Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -616,7 +586,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 20,
   },
-  headerTitle: { fontSize: 18, fontWeight: '900', color: '#0B1D17' },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: Typography.screenHeaderFontSize,
+    fontWeight: '900',
+    color: '#0B1D17',
+  },
   backButton: { width: 40 },
   card: { backgroundColor: '#198B3F', borderRadius: 16, padding: 16, marginBottom: 16 },
   label: { color: '#FFFFFF', fontSize: 11, fontWeight: '800', marginBottom: 10, opacity: 0.8 },

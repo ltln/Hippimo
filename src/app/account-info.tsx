@@ -3,6 +3,8 @@ import { router } from 'expo-router'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { Typography } from '@/config/constants/theme'
+
 const accountRows = [
   { icon: 'email', text: '23521142@gm.uit.edu.vn' },
   { icon: 'calendar-text', text: '23/04/2026' },
@@ -25,7 +27,9 @@ export default function AccountInfoScreen() {
             <Ionicons name='arrow-back' size={25} color='#0B1D17' />
           </Pressable>
 
-          <Text style={styles.title}>Thông tin tài khoản</Text>
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
+            Thông tin tài khoản
+          </Text>
 
           <View style={styles.profileRow}>
             <View style={styles.avatar}>
@@ -87,7 +91,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 54,
     textAlign: 'center',
-    fontSize: 28,
+    fontSize: Typography.screenHeaderFontSize,
     fontWeight: '900',
     color: '#0B1D17',
   },

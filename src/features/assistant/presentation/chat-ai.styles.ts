@@ -1,5 +1,7 @@
 import { StyleSheet } from 'react-native'
 
+import { Typography } from '@/config/constants/theme'
+
 export const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -13,6 +15,13 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginBottom: 34,
+    position: 'relative',
+  },
+  backButton: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    zIndex: 2,
   },
   aiMarkFrame: {
     width: 42,
@@ -27,7 +36,7 @@ export const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: Typography.screenHeaderFontSize,
     fontWeight: '900',
     color: '#081A13',
     letterSpacing: 0,

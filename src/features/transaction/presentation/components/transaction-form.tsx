@@ -13,11 +13,8 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import {
-  mapCategoriesToOptions,
-  type CategoryOption,
-  useCategories,
-} from '@/features/category/data/use-categories'
+import { Typography } from '@/config/constants/theme'
+import { mapCategoriesToOptions, useCategories } from '@/features/category/data/use-categories'
 import type { TransactionItem } from '@/features/transaction/data/transaction-context'
 import { useWallets } from '@/features/wallet/data/wallet-context'
 import {
@@ -39,14 +36,6 @@ type SelectionOption = {
   color?: string | null
 }
 
-const defaultCategoryOptions: CategoryOption[] = [
-  { value: 'Ăn uống', label: 'Ăn uống', id: '' },
-  { value: 'Di chuyển', label: 'Di chuyển', id: '' },
-  { value: 'Nhà cửa', label: 'Nhà cửa', id: '' },
-  { value: 'Giải trí', label: 'Giải trí', id: '' },
-  { value: 'Mua sắm', label: 'Mua sắm', id: '' },
-  { value: 'Làm đẹp', label: 'Làm đẹp', id: '' },
-]
 type TransactionFormProps = {
   title: string
   submitLabel: string
@@ -108,10 +97,7 @@ export function TransactionForm({
     [],
   )
 
-  const categoryOptions = useMemo(() => {
-    const options = mapCategoriesToOptions(categories)
-    return options.length ? options : defaultCategoryOptions
-  }, [categories])
+  const categoryOptions = useMemo(() => mapCategoriesToOptions(categories), [categories])
 
   const selectedCategory = useMemo(
     () => categoryOptions.find((option) => option.value === expenseCategory),
@@ -121,11 +107,7 @@ export function TransactionForm({
   useEffect(() => {
     if (mode === 'expense' && categoryOptions.length) {
       const hasCategory = categoryOptions.some((option) => option.value === expenseCategory)
-      const isDefaultCategory =
-        !initialValues.expenseCategory ||
-        initialValues.expenseCategory === defaultTransactionFormValues.expenseCategory
-
-      if (!hasCategory && isDefaultCategory) {
+      if (!hasCategory && !initialValues.expenseCategory) {
         setExpenseCategory(categoryOptions[0].value)
       }
     }
@@ -275,7 +257,9 @@ export function TransactionForm({
           <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
             <Ionicons name='arrow-back' size={24} color='#0B1D17' />
           </Pressable>
-          <Text style={styles.headerTitle}>{title}</Text>
+          <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
+            {title}
+          </Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -373,14 +357,25 @@ export function TransactionForm({
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>DANH MỤC</Text>
           <View style={styles.categoryContainer}>
-            <TextInput
-              value={expenseCategory}
-              onChangeText={setExpenseCategory}
-              placeholder='Nhập tên danh mục'
-              placeholderTextColor='#B8CEC3'
+            <Pressable
               style={styles.categoryInput}
-              editable={mode === 'expense'}
-            />
+              onPress={() => {
+                if (mode === 'expense') {
+                  setOpenDropdown('expenseCategory')
+                }
+              }}
+              disabled={mode !== 'expense'}
+            >
+              <Text
+                style={[
+                  styles.categoryInputText,
+                  !expenseCategory && styles.categoryInputPlaceholder,
+                ]}
+                numberOfLines={1}
+              >
+                {expenseCategory || 'Chọn danh mục'}
+              </Text>
+            </Pressable>
             <Pressable
               style={styles.categoryListButton}
               onPress={() => {
@@ -618,7 +613,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 18,
+    fontSize: Typography.screenHeaderFontSize,
     fontWeight: '900',
     color: '#0B1D17',
     letterSpacing: 0.4,
@@ -873,10 +868,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F5F2',
     borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  categoryInputText: {
     fontSize: 14,
     color: '#072D20',
     fontWeight: '700',
+  },
+  categoryInputPlaceholder: {
+    color: '#B8CEC3',
   },
   categoryListButton: {
     flexDirection: 'row',

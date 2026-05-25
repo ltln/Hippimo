@@ -73,10 +73,10 @@ export default function TransactionScreen() {
         {showFilters ? (
           <View style={styles.controlCard}>
             <View style={styles.controlHeader}>
-              <Text style={styles.controlTitle}>Bo loc giao dich</Text>
+              <Text style={styles.controlTitle}>Bộ lọc giao dịch</Text>
             </View>
 
-            <Text style={styles.fieldLabel}>Loai giao dich</Text>
+            <Text style={styles.fieldLabel}>Loại giao dịch</Text>
             <View style={styles.chipRow}>
               {typeOptions.map((option) => (
                 <FilterChip
@@ -88,13 +88,13 @@ export default function TransactionScreen() {
               ))}
             </View>
 
-            <Text style={[styles.fieldLabel, styles.fieldSpacing]}>Tim theo ngay, thang, nam</Text>
+            <Text style={[styles.fieldLabel, styles.fieldSpacing]}>Tìm theo ngày, tháng, năm</Text>
             <View style={styles.searchField}>
               <MaterialCommunityIcons name='calendar-month-outline' size={18} color='#49685B' />
               <TextInput
                 value={dateQuery}
                 onChangeText={setDateQuery}
-                placeholder='VD: 07-04-2026, 04-2026 hoac 2026'
+                placeholder='VD: 07-04-2026, 04-2026 hoặc 2026'
                 placeholderTextColor='#7C9086'
                 style={styles.searchInput}
               />

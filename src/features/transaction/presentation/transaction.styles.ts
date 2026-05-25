@@ -1,5 +1,7 @@
 import { StyleSheet } from 'react-native'
 
+import { Typography } from '@/config/constants/theme'
+
 export const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -19,7 +21,7 @@ export const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 30,
+    fontSize: Typography.screenHeaderFontSize,
     fontWeight: '900',
     color: '#081A13',
   },

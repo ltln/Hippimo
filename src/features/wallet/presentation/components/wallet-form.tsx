@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { Typography } from '@/config/constants/theme'
 import {
   getWalletTypeMeta,
   type WalletItem,
@@ -75,7 +76,9 @@ export function WalletForm({ title, submitLabel, initialWallet, onSubmit }: Wall
           <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
             <Ionicons name='arrow-back' size={28} color='#0B1D17' />
           </Pressable>
-          <Text style={styles.headerTitle}>{title}</Text>
+          <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
+            {title}
+          </Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -196,7 +199,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 28,
+    fontSize: Typography.screenHeaderFontSize,
     fontWeight: '900',
     color: '#0B1D17',
   },

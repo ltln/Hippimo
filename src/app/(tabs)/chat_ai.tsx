@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
+import { router } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import {
@@ -54,6 +55,9 @@ export default function ChatAIScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
+          <Pressable onPress={() => router.replace('/')} hitSlop={8} style={styles.backButton}>
+            <Ionicons name='arrow-back' size={27} color='#0B1D17' />
+          </Pressable>
           <RainbowFrame style={styles.aiMarkFrame} innerStyle={styles.aiMarkInner}>
             <Ionicons name='sparkles' size={18} color='#081A13' />
           </RainbowFrame>

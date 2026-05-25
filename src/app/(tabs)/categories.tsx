@@ -1,0 +1,492 @@
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
+import { router } from 'expo-router'
+import { useEffect, useMemo, useState, type ComponentProps } from 'react'
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+
+import { Typography } from '@/config/constants/theme'
+import {
+  createCategory,
+  deleteCategory,
+  updateCategory,
+} from '@/features/category/data/category-api'
+import { useCategories } from '@/features/category/data/use-categories'
+import type { Category } from '@/features/category/domain/category.types'
+import { useAuth } from '@/features/auth/data/auth-context'
+import { getCategoryColor, getCategoryIcon } from '@/features/transaction/utils/transaction-form'
+import { confirmDelete } from '@/shared/utils/confirm-delete'
+
+type MaterialIconName = ComponentProps<typeof MaterialCommunityIcons>['name']
+
+const showAlert = (title: string, message: string) => {
+  if (Platform.OS === 'web') {
+    window.alert(`${title}\n${message}`)
+    return
+  }
+
+  Alert.alert(title, message)
+}
+
+export default function CategoriesScreen() {
+  const insets = useSafeAreaInsets()
+  const { authResponse } = useAuth()
+  const accessToken = authResponse?.tokens.accessToken
+  const { categories, error, isLoading, refresh } = useCategories({ status: 'ACTIVE' })
+  const [searchQuery, setSearchQuery] = useState('')
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+
+  const visibleCategories = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase()
+
+    if (!normalizedQuery) {
+      return categories
+    }
+
+    return categories.filter((category) => category.name.toLowerCase().includes(normalizedQuery))
+  }, [categories, searchQuery])
+
+  const openCreateForm = () => {
+    setEditingCategory(null)
+    setIsFormOpen(true)
+  }
+
+  const openEditForm = (category: Category) => {
+    setEditingCategory(category)
+    setIsFormOpen(true)
+  }
+
+  const handleDelete = (category: Category) => {
+    if (!accessToken) {
+      Alert.alert('Chưa đăng nhập', 'Bạn cần đăng nhập để xóa danh mục.')
+      return
+    }
+
+    confirmDelete('Xóa danh mục', `Bạn có chắc muốn xóa ${category.name}?`, async () => {
+      try {
+        await deleteCategory(category.categoryId, accessToken)
+        await refresh()
+      } catch (err) {
+        Alert.alert(
+          'Không xóa được danh mục',
+          err instanceof Error ? err.message : 'Vui lòng thử lại.',
+        )
+      }
+    })
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 18, 34) }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Pressable onPress={() => router.replace('/')} hitSlop={8} style={styles.backButton}>
+            <Ionicons name='arrow-back' size={27} color='#0B1D17' />
+          </Pressable>
+          <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
+            DANH MỤC
+          </Text>
+          <Pressable
+            style={styles.addButton}
+            onPress={openCreateForm}
+            hitSlop={8}
+            accessibilityLabel='Thêm danh mục'
+          >
+            <Ionicons name='add' size={28} color='#0B1D17' />
+          </Pressable>
+        </View>
+
+        <View style={styles.searchBox}>
+          <Ionicons name='search' size={20} color='#49685B' />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder='Tìm kiếm theo tên danh mục'
+            placeholderTextColor='#7C9086'
+            style={styles.searchInput}
+            autoCapitalize='none'
+            autoCorrect={false}
+          />
+          {searchQuery ? (
+            <Pressable
+              style={styles.clearSearchButton}
+              onPress={() => setSearchQuery('')}
+              hitSlop={8}
+            >
+              <Ionicons name='close-circle' size={19} color='#49685B' />
+            </Pressable>
+          ) : null}
+        </View>
+
+        {isLoading ? (
+          <View style={styles.stateBox}>
+            <ActivityIndicator color='#0A251B' />
+            <Text style={styles.stateText}>Đang tải danh mục...</Text>
+          </View>
+        ) : null}
+
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
+        {!isLoading && visibleCategories.length === 0 ? (
+          <View style={styles.stateBox}>
+            <MaterialCommunityIcons name='tag-outline' size={32} color='#49685B' />
+            <Text style={styles.stateText}>
+              {searchQuery.trim()
+                ? 'Không tìm thấy danh mục phù hợp.'
+                : 'Chưa có danh mục trong database.'}
+            </Text>
+          </View>
+        ) : null}
+
+        <View style={styles.list}>
+          {visibleCategories.map((category) => (
+            <CategoryRow
+              key={category.categoryId}
+              category={category}
+              onEdit={() => openEditForm(category)}
+              onDelete={() => handleDelete(category)}
+            />
+          ))}
+        </View>
+      </ScrollView>
+
+      <CategoryFormModal
+        accessToken={accessToken}
+        category={editingCategory}
+        visible={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSaved={async () => {
+          setIsFormOpen(false)
+          await refresh()
+        }}
+      />
+    </SafeAreaView>
+  )
+}
+
+function CategoryRow({
+  category,
+  onDelete,
+  onEdit,
+}: {
+  category: Category
+  onDelete: () => void
+  onEdit: () => void
+}) {
+  const color = category.color || getCategoryColor(category.name)
+  const icon = resolveCategoryIcon(category)
+
+  return (
+    <View style={styles.categoryRow}>
+      <View style={[styles.categoryIcon, { backgroundColor: color }]}>
+        <MaterialCommunityIcons name={icon} size={22} color='#FFFFFF' />
+      </View>
+      <View style={styles.categoryBody}>
+        <Text style={styles.categoryName}>{category.name}</Text>
+      </View>
+      <View style={styles.rowActions}>
+        <Pressable style={styles.iconButton} onPress={onEdit} hitSlop={8}>
+          <MaterialCommunityIcons name='pencil-outline' size={20} color='#0B1D17' />
+        </Pressable>
+        <Pressable style={styles.iconButton} onPress={onDelete} hitSlop={8}>
+          <MaterialCommunityIcons name='trash-can-outline' size={20} color='#B3261E' />
+        </Pressable>
+      </View>
+    </View>
+  )
+}
+
+function CategoryFormModal({
+  accessToken,
+  category,
+  onClose,
+  onSaved,
+  visible,
+}: {
+  accessToken?: string
+  category: Category | null
+  onClose: () => void
+  onSaved: () => Promise<void>
+  visible: boolean
+}) {
+  const [name, setName] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!visible) {
+      return
+    }
+
+    setName(category?.name ?? '')
+  }, [category, visible])
+
+  const handleSave = async () => {
+    const trimmedName = name.trim()
+
+    if (!trimmedName) {
+      showAlert('Thiếu tên danh mục', 'Bạn hãy nhập tên danh mục trước khi lưu.')
+      return
+    }
+
+    if (!accessToken) {
+      Alert.alert('Chưa đăng nhập', 'Bạn cần đăng nhập để lưu danh mục.')
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      const payload = {
+        name: trimmedName,
+        icon: getCategoryIcon(trimmedName),
+        color: getCategoryColor(trimmedName),
+      }
+
+      if (category) {
+        await updateCategory(category.categoryId, payload, accessToken)
+      } else {
+        await createCategory({ ...payload, type: 'EXPENSE' }, accessToken)
+      }
+
+      await onSaved()
+    } catch (err) {
+      Alert.alert(
+        'Không lưu được danh mục',
+        err instanceof Error ? err.message : 'Vui lòng thử lại.',
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType='fade' onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable style={styles.modalCard} onPress={() => {}}>
+          <Text style={styles.modalTitle}>{category ? 'Sửa danh mục' : 'Thêm danh mục'}</Text>
+          <Text style={styles.inputLabel}>Tên danh mục</Text>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder='Nhập tên danh mục'
+            placeholderTextColor='#7C9086'
+            style={styles.input}
+          />
+
+          <Pressable
+            disabled={isSubmitting}
+            style={[styles.saveButton, isSubmitting && styles.saveButtonDisabled]}
+            onPress={handleSave}
+          >
+            <Text style={styles.saveButtonText}>{isSubmitting ? 'ĐANG LƯU...' : 'LƯU'}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  )
+}
+
+function resolveCategoryIcon(category: Category): MaterialIconName {
+  const icon = category.icon?.trim()
+
+  if (!icon || icon.includes('/') || icon.startsWith('http')) {
+    return getCategoryIcon(category.name)
+  }
+
+  return icon as MaterialIconName
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F7FBF5',
+  },
+  content: {
+    paddingHorizontal: 22,
+    paddingBottom: 36,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginBottom: 22,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  headerTitle: {
+    flex: 1,
+    color: '#0B1D17',
+    fontSize: Typography.screenHeaderFontSize,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  addButton: {
+    position: 'absolute',
+    right: 0,
+    top: -2,
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 48,
+    borderRadius: 8,
+    backgroundColor: '#EAF3E6',
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#0B1D17',
+    fontSize: 15,
+    fontWeight: '800',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  clearSearchButton: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  list: {
+    gap: 10,
+  },
+  categoryRow: {
+    minHeight: 68,
+    borderRadius: 8,
+    backgroundColor: '#79C77C',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+  },
+  categoryIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryBody: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  categoryName: {
+    color: '#0C3025',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  rowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  iconButton: {
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stateBox: {
+    minHeight: 90,
+    borderRadius: 8,
+    backgroundColor: '#EAF3E6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 14,
+    padding: 16,
+  },
+  stateText: {
+    color: '#49685B',
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  errorBox: {
+    borderRadius: 8,
+    backgroundColor: '#FFE7E7',
+    padding: 12,
+    marginBottom: 14,
+  },
+  errorText: {
+    color: '#8A1C1C',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 22,
+  },
+  modalCard: {
+    width: '100%',
+    borderRadius: 12,
+    backgroundColor: '#F7FBF5',
+    padding: 18,
+  },
+  modalTitle: {
+    color: '#0B1D17',
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  inputLabel: {
+    color: '#23473A',
+    fontSize: 13,
+    fontWeight: '900',
+    marginBottom: 8,
+  },
+  input: {
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    color: '#0B1D17',
+    fontSize: 15,
+    fontWeight: '800',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    marginBottom: 18,
+  },
+  saveButton: {
+    minHeight: 48,
+    borderRadius: 999,
+    backgroundColor: '#128A3D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+})

@@ -28,7 +28,12 @@ export default function RootLayout() {
               <TransactionProvider>
                 <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                   <AuthGate>
-                    <Stack>
+                    <Stack
+                      screenOptions={{
+                        animation: 'slide_from_right',
+                        animationDuration: 240,
+                      }}
+                    >
                       <Stack.Screen name='login' options={{ headerShown: false }} />
                       <Stack.Screen name='(tabs)' options={{ headerShown: false }} />
                       <Stack.Screen name='add-transaction' options={{ headerShown: false }} />
@@ -41,7 +46,11 @@ export default function RootLayout() {
                       <Stack.Screen name='oauthredirect' options={{ headerShown: false }} />
                       <Stack.Screen
                         name='modal'
-                        options={{ presentation: 'modal', title: 'Modal' }}
+                        options={{
+                          animation: 'fade_from_bottom',
+                          presentation: 'modal',
+                          title: 'Modal',
+                        }}
                       />
                     </Stack>
                   </AuthGate>

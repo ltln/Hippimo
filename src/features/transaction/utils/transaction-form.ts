@@ -23,7 +23,7 @@ export const defaultTransactionFormValues: TransactionFormValues = {
   amount: '400000',
   note: '',
   expenseWallet: 'cash-main',
-  expenseCategory: 'Ăn uống',
+  expenseCategory: '',
   expenseWalletType: 'Tiền mặt',
   transferFromWallet: 'cash-main',
   transferToWallet: 'momo-main',

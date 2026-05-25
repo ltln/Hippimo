@@ -10,6 +10,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
+        animation: 'shift',
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarShowLabel: true,
@@ -81,6 +82,13 @@ export default function TabLayout() {
         options={{
           href: null,
           title: 'Chat AI',
+        }}
+      />
+      <Tabs.Screen
+        name='categories'
+        options={{
+          href: null,
+          title: 'Danh mục',
         }}
       />
       <Tabs.Screen
