@@ -28,6 +28,7 @@ export type TransactionItem = {
   amountValue: number
   dateLabel: string
   dateISO: string
+  timeLabel?: string
   icon: ComponentProps<typeof MaterialCommunityIcons>['name']
   iconBackground: string
   type: TransactionType
@@ -39,6 +40,7 @@ export type TransactionItem = {
     amountDisplay: string
     amountColor: string
     date: string
+    time?: string
     tags: string[]
     note: string
     aiSuggestion?: string
@@ -200,6 +202,7 @@ function mapTransactionFromApi(transaction: Transaction, categories: Category[])
   const amount = Number.isNaN(amountValue) ? 0 : amountValue
   const dateISO = transaction.transactionDate.slice(0, 10)
   const dateLabel = formatDateLabel(dateISO)
+  const timeLabel = formatTimeLabel(transaction.transactionDate)
   const category = categories.find((item) => item.categoryId === transaction.categoryId)
   const categoryName = category?.name ?? 'Giao dịch'
   const note = transaction.notes?.trim() || 'Không có ghi chú'
@@ -214,6 +217,7 @@ function mapTransactionFromApi(transaction: Transaction, categories: Category[])
       amountValue: amount,
       dateLabel,
       dateISO,
+      timeLabel,
       icon: 'wallet-outline',
       iconBackground: '#8A7DFF',
       type: 'transfer',
@@ -223,6 +227,7 @@ function mapTransactionFromApi(transaction: Transaction, categories: Category[])
         amountDisplay: formattedAmount,
         amountColor: '#79F4A6',
         date: dateLabel,
+        time: timeLabel,
         tags: [
           transaction.toWalletId
             ? `${transaction.walletId} -> ${transaction.toWalletId}`
@@ -244,6 +249,7 @@ function mapTransactionFromApi(transaction: Transaction, categories: Category[])
       amountValue: amount,
       dateLabel,
       dateISO,
+      timeLabel,
       icon:
         (category?.icon as ComponentProps<typeof MaterialCommunityIcons>['name'] | undefined) ??
         getCategoryIcon(categoryName),
@@ -255,6 +261,7 @@ function mapTransactionFromApi(transaction: Transaction, categories: Category[])
         amountDisplay: `+${formattedAmount}`,
         amountColor: '#79F4A6',
         date: dateLabel,
+        time: timeLabel,
         tags: [transaction.walletId],
         note,
         aiSuggestion: `Khoản thu từ ${categoryName.toLowerCase()}`,
@@ -271,6 +278,7 @@ function mapTransactionFromApi(transaction: Transaction, categories: Category[])
     amountValue: -amount,
     dateLabel,
     dateISO,
+    timeLabel,
     icon:
       (category?.icon as ComponentProps<typeof MaterialCommunityIcons>['name'] | undefined) ??
       getCategoryIcon(categoryName),
@@ -282,6 +290,7 @@ function mapTransactionFromApi(transaction: Transaction, categories: Category[])
       amountDisplay: `-${formattedAmount}`,
       amountColor: '#FFDFD7',
       date: dateLabel,
+      time: timeLabel,
       tags: [transaction.walletId],
       note,
       aiSuggestion: `Có vẻ bạn đang chi cho ${categoryName.toLowerCase()}?`,
@@ -304,7 +313,7 @@ function mapTransactionToApi(transaction: TransactionItem) {
       toWalletId: transaction.transferToWalletId,
       amount,
       type: 'TRANSFER' as ApiTransactionType,
-      transactionDate: transaction.dateISO,
+      transactionDate: formatTransactionDateTime(transaction.dateISO, transaction.timeLabel),
       notes: transaction.detail.note,
       isExcludedFromReport: false,
       isEssential: false,
@@ -324,7 +333,7 @@ function mapTransactionToApi(transaction: TransactionItem) {
     categoryId: transaction.categoryId,
     amount,
     type: (transaction.type === 'income' ? 'INCOME' : 'EXPENSE') as ApiTransactionType,
-    transactionDate: transaction.dateISO,
+    transactionDate: formatTransactionDateTime(transaction.dateISO, transaction.timeLabel),
     notes: transaction.detail.note,
     isExcludedFromReport: false,
     isEssential: false,
@@ -334,6 +343,15 @@ function mapTransactionToApi(transaction: TransactionItem) {
 function formatDateLabel(dateISO: string) {
   const [year, month, day] = dateISO.split('-')
   return `${day}-${month}-${year}`
+}
+
+function formatTimeLabel(transactionDate: string) {
+  const match = transactionDate.match(/T(\d{2}):(\d{2})/)
+  return match ? `${match[1]}:${match[2]}` : '00:00'
+}
+
+function formatTransactionDateTime(dateISO: string, timeLabel = '00:00') {
+  return `${dateISO}T${timeLabel}:00`
 }
 
 function formatVnd(value: number) {

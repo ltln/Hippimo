@@ -29,7 +29,7 @@ export function WalletCard({
           <Text style={styles.walletName}>{wallet.name}</Text>
           <View style={styles.walletTypeRow}>
             <View style={styles.walletTypeIcon}>
-              <MaterialCommunityIcons name={walletType.icon} size={18} color='#DDF2D2' />
+              <MaterialCommunityIcons name={walletType.icon} size={18} color='#12392C' />
             </View>
             <Text style={styles.walletTypeLabel}>{walletType.label}</Text>
           </View>
@@ -147,6 +147,7 @@ function RecentTransaction({
     transaction.type === 'transfer'
       ? `${transaction.transferFromWalletId === walletId ? '-' : '+'}${transaction.amount}`
       : transaction.amount
+  const isExpense = amount.trim().startsWith('-')
 
   return (
     <View style={styles.transactionRow}>
@@ -157,7 +158,14 @@ function RecentTransaction({
         <Text style={styles.transactionTitle}>{transaction.title}</Text>
       </View>
       <View style={styles.transactionAmountBlock}>
-        <Text style={styles.transactionAmount}>{amount}</Text>
+        <Text
+          style={[
+            styles.transactionAmount,
+            isExpense ? styles.transactionAmountExpense : styles.transactionAmountIncome,
+          ]}
+        >
+          {amount}
+        </Text>
         <Text style={styles.transactionDate}>{transaction.dateLabel}</Text>
       </View>
     </View>

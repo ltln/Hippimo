@@ -51,7 +51,7 @@ export function BudgetCard({ budget, onDelete }: { budget: BudgetItem; onDelete:
           <View
             style={[
               styles.progressBarFill,
-              { width: `${percent * 100}%`, backgroundColor: isOver ? '#FF5252' : '#79C77C' },
+              { width: `${percent * 100}%`, backgroundColor: isOver ? '#B3261E' : '#12392C' },
             ]}
           />
         </View>

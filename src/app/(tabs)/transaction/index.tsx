@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -8,10 +8,15 @@ import {
   useTransactions,
   type TransactionType,
 } from '@/features/transaction/data/transaction-context'
-import { DetailCard, FilterChip } from '@/features/transaction/presentation/transaction-components'
+import { useCategories } from '@/features/category/data/use-categories'
+import {
+  AiInsightCard,
+  DetailCard,
+  FilterChip,
+  TransactionPageTabs,
+} from '@/features/transaction/presentation/transaction-components'
 import { styles } from '@/features/transaction/presentation/transaction.styles'
 import { normalizeDateQuery } from '@/features/transaction/utils/transaction-utils'
-import { useWallets } from '@/features/wallet/data/wallet-context'
 import { confirmDelete } from '@/shared/utils/confirm-delete'
 
 type TypeFilter = 'all' | TransactionType
@@ -25,12 +30,13 @@ const typeOptions: { key: TypeFilter; label: string }[] = [
 export default function TransactionScreen() {
   const insets = useSafeAreaInsets()
   const { transactions, deleteTransaction } = useTransactions()
-  const { wallets } = useWallets()
+  const { categories } = useCategories({ status: 'ACTIVE' })
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
   const [dateQuery, setDateQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
-  const filteredTransactions = useMemo(() => {
+  const dateAndTypeFilteredTransactions = useMemo(() => {
     const normalizedDateQuery = normalizeDateQuery(dateQuery)
 
     return transactions.filter((item) => {
@@ -43,6 +49,28 @@ export default function TransactionScreen() {
       return matchesType && matchesDate
     })
   }, [dateQuery, transactions, typeFilter])
+
+  const categoryOptions = useMemo(() => {
+    const categoryNames = categories
+      .map((category) => category.name)
+      .filter((name, index, names) => name && names.indexOf(name) === index)
+
+    return ['all', ...categoryNames]
+  }, [categories])
+
+  useEffect(() => {
+    if (!categoryOptions.includes(categoryFilter)) {
+      setCategoryFilter('all')
+    }
+  }, [categoryFilter, categoryOptions])
+
+  const filteredTransactions = useMemo(() => {
+    if (categoryFilter === 'all') {
+      return dateAndTypeFilteredTransactions
+    }
+
+    return dateAndTypeFilteredTransactions.filter((item) => item.title === categoryFilter)
+  }, [categoryFilter, dateAndTypeFilteredTransactions])
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
@@ -70,6 +98,8 @@ export default function TransactionScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 92 }]}
         showsVerticalScrollIndicator={false}
       >
+        <TransactionPageTabs activeTab='activity' />
+
         {showFilters ? (
           <View style={styles.controlCard}>
             <View style={styles.controlHeader}>
@@ -102,11 +132,37 @@ export default function TransactionScreen() {
           </View>
         ) : null}
 
+        <AiInsightCard transactions={dateAndTypeFilteredTransactions} />
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryTabsContent}
+          style={styles.categoryTabs}
+        >
+          {categoryOptions.map((category) => {
+            const active = categoryFilter === category
+            const label = category === 'all' ? 'Tất cả' : category
+
+            return (
+              <Pressable
+                key={category}
+                style={styles.categoryTab}
+                onPress={() => setCategoryFilter(category)}
+              >
+                <Text style={[styles.categoryTabText, active && styles.categoryTabTextActive]}>
+                  {label}
+                </Text>
+                {active ? <View style={styles.categoryTabIndicator} /> : null}
+              </Pressable>
+            )
+          })}
+        </ScrollView>
+
         {filteredTransactions.map((item) => (
           <DetailCard
             key={item.id}
             item={item}
-            wallets={wallets}
             onDelete={() => {
               const id = item.id
               const title = item.title
