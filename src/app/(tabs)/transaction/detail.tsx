@@ -48,8 +48,6 @@ export default function TransactionDetailScreen() {
   const expenseWalletMeta = getWalletTypeMeta(
     expenseWallet.wallet?.type ?? expenseWallet.walletType ?? 'cash',
   )
-  const fromWalletMeta = getWalletTypeMeta(transferWallets.fromType)
-  const toWalletMeta = getWalletTypeMeta(transferWallets.toType)
   const iconBackgroundColor = item.iconBackground || '#245442'
 
   const handleDelete = () => {
