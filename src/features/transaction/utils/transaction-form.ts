@@ -15,6 +15,7 @@ export type TransactionFormValues = {
   expenseWalletType: string
   transferFromWallet: string
   transferToWallet: string
+  transactionTime: string
   transactionDate: string
 }
 
@@ -27,6 +28,7 @@ export const defaultTransactionFormValues: TransactionFormValues = {
   expenseWalletType: 'Tiền mặt',
   transferFromWallet: 'cash-main',
   transferToWallet: 'momo-main',
+  transactionTime: '00:00',
   transactionDate: '29/04/2026',
 }
 
@@ -50,10 +52,30 @@ export function normalizeDate(value: string) {
   }
 }
 
+export function normalizeTime(value: string) {
+  const normalized = value.trim().replace('.', ':')
+  const pattern = /^(\d{1,2}):(\d{2})$/
+  const match = normalized.match(pattern)
+
+  if (!match) {
+    return null
+  }
+
+  const hour = Number.parseInt(match[1], 10)
+  const minute = Number.parseInt(match[2], 10)
+
+  if (hour > 23 || minute > 59) {
+    return null
+  }
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
 export function buildTransaction({
   id,
   amountValue,
   date,
+  time,
   mode,
   note,
   expenseWallet,
@@ -69,6 +91,7 @@ export function buildTransaction({
   id?: string
   amountValue: number
   date: { display: string; iso: string }
+  time: string
   mode: CreateMode
   note: string
   expenseWallet: string
@@ -102,6 +125,7 @@ export function buildTransaction({
       amountValue,
       dateLabel: date.display,
       dateISO: date.iso,
+      timeLabel: time,
       icon: 'wallet-outline',
       iconBackground: '#8A7DFF',
       type: 'transfer',
@@ -111,6 +135,7 @@ export function buildTransaction({
         amountDisplay: formattedAmount,
         amountColor: '#79F4A6',
         date: date.display,
+        time,
         tags: [`${fromWalletName} -> ${toWalletName}`],
         note: normalizedNote,
         aiSuggestion: 'Giao dịch chuyển tiền nội bộ',
@@ -127,6 +152,7 @@ export function buildTransaction({
     amountValue: -amountValue,
     dateLabel: date.display,
     dateISO: date.iso,
+    timeLabel: time,
     icon: categoryIcon ?? getCategoryIcon(expenseCategory),
     iconBackground: categoryColor ?? getCategoryColor(expenseCategory),
     type: 'expense',
@@ -136,6 +162,7 @@ export function buildTransaction({
       amountDisplay: `-${formattedAmount}`,
       amountColor: '#FFDFD7',
       date: date.display,
+      time,
       tags: [expenseWalletName],
       note: normalizedNote,
       aiSuggestion: `Có vẻ bạn đang chi cho ${expenseCategory.toLowerCase()}?`,
@@ -168,6 +195,10 @@ export function getTransactionFormValues(
         transaction.transferFromWalletId ??
         matchKnownWalletId(fromWalletRaw || transaction.detail.footer, wallets),
       transferToWallet: transaction.transferToWalletId ?? matchKnownWalletId(toWalletRaw, wallets),
+      transactionTime:
+        transaction.timeLabel ??
+        transaction.detail.time ??
+        defaultTransactionFormValues.transactionTime,
       transactionDate,
     }
   }
@@ -185,6 +216,10 @@ export function getTransactionFormValues(
     expenseWalletType: walletTypeToLabel(resolvedWalletType),
     transferFromWallet: defaultTransactionFormValues.transferFromWallet,
     transferToWallet: defaultTransactionFormValues.transferToWallet,
+    transactionTime:
+      transaction.timeLabel ??
+      transaction.detail.time ??
+      defaultTransactionFormValues.transactionTime,
     transactionDate,
   }
 }

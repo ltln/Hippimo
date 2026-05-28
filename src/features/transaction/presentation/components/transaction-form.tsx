@@ -24,6 +24,7 @@ import {
   defaultTransactionFormValues,
   formatCurrencyInput,
   normalizeDate,
+  normalizeTime,
   walletTypeToLabel,
   type CreateMode,
   type TransactionFormValues,
@@ -67,6 +68,7 @@ export function TransactionForm({
   const [expenseCategory, setExpenseCategory] = useState(initialValues.expenseCategory)
   const [transferFromWallet, setTransferFromWallet] = useState(initialValues.transferFromWallet)
   const [transferToWallet, setTransferToWallet] = useState(initialValues.transferToWallet)
+  const [transactionTime, setTransactionTime] = useState(initialValues.transactionTime)
   const [transactionDate, setTransactionDate] = useState(initialValues.transactionDate)
   const [openDropdown, setOpenDropdown] = useState<
     | null
@@ -126,6 +128,7 @@ export function TransactionForm({
         : initialValues.expenseCategory
     setTransferFromWallet(initialValues.transferFromWallet)
     setTransferToWallet(initialValues.transferToWallet)
+    setTransactionTime(initialValues.transactionTime)
     setTransactionDate(initialValues.transactionDate)
   }, [initialValues])
 
@@ -212,9 +215,15 @@ export function TransactionForm({
     }
 
     const normalizedDate = normalizeDate(transactionDate)
+    const normalizedTime = normalizeTime(transactionTime)
 
     if (!normalizedDate) {
       Alert.alert('Ngày chưa hợp lệ', 'Bạn hãy nhập ngày theo dạng dd/mm/yyyy.')
+      return
+    }
+
+    if (!normalizedTime) {
+      Alert.alert('Giờ chưa hợp lệ', 'Bạn hãy nhập giờ theo dạng hh:mm.')
       return
     }
 
@@ -222,6 +231,7 @@ export function TransactionForm({
       id: transactionId,
       amountValue: numericAmount,
       date: normalizedDate,
+      time: normalizedTime,
       mode,
       note: noteRef.current,
       expenseWallet,
@@ -375,8 +385,19 @@ export function TransactionForm({
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>NGÀY GIAO DỊCH</Text>
-          <View style={styles.dateRow}>
+          <Text style={styles.sectionTitle}>THỜI GIAN GIAO DỊCH</Text>
+          <View style={styles.dateTimeColumn}>
+            <View style={styles.timePill}>
+              <TextInput
+                value={transactionTime}
+                onChangeText={setTransactionTime}
+                placeholder='hh:mm'
+                placeholderTextColor='#DDF2D2'
+                keyboardType='numbers-and-punctuation'
+                maxLength={5}
+                style={styles.timeInput}
+              />
+            </View>
             <View style={styles.datePill}>
               <TextInput
                 value={transactionDate}
@@ -721,6 +742,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  dateTimeColumn: {
+    alignItems: 'center',
+    gap: 10,
+  },
+  timePill: {
+    alignSelf: 'center',
+    backgroundColor: '#12392C',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
   datePill: {
     alignSelf: 'center',
     backgroundColor: '#12392C',
@@ -730,6 +762,14 @@ const styles = StyleSheet.create({
   },
   dateInput: {
     width: 148,
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    paddingVertical: 0,
+  },
+  timeInput: {
+    width: 86,
     fontSize: 22,
     fontWeight: '900',
     color: '#FFFFFF',

@@ -109,7 +109,7 @@ export const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     borderWidth: 2,
-    borderColor: '#DDF2D2',
+    borderColor: '#12392C',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -117,12 +117,12 @@ export const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '900',
-    color: '#DDF2D2',
+    color: '#12392C',
   },
   balanceLabel: {
     fontSize: 12,
     fontWeight: '900',
-    color: '#E9F8E2',
+    color: '#12392C',
   },
   balanceValue: {
     marginTop: 5,
@@ -148,7 +148,7 @@ export const styles = StyleSheet.create({
   incomeLabel: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#E9F8E2',
+    color: '#12392C',
   },
   incomeValue: {
     marginTop: 4,
@@ -164,7 +164,7 @@ export const styles = StyleSheet.create({
   spentLabel: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#E9F8E2',
+    color: '#12392C',
   },
   spentValue: {
     marginTop: 4,
@@ -182,7 +182,7 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
     fontSize: 21,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: '#12392C',
   },
   transactionRow: {
     minHeight: 72,
@@ -206,13 +206,13 @@ export const styles = StyleSheet.create({
   transactionTitle: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: '#12392C',
   },
   transferSubtitle: {
     marginTop: 3,
     fontSize: 11,
     fontWeight: '800',
-    color: '#E9F8E2',
+    color: '#12392C',
   },
   transactionAmountBlock: {
     alignItems: 'flex-end',
@@ -221,18 +221,23 @@ export const styles = StyleSheet.create({
   transactionAmount: {
     fontSize: 15,
     fontWeight: '900',
-    color: '#FFFFFF',
     textAlign: 'right',
+  },
+  transactionAmountExpense: {
+    color: '#B3261E',
+  },
+  transactionAmountIncome: {
+    color: '#006D4E',
   },
   transactionDate: {
     marginTop: 4,
     fontSize: 11,
     fontWeight: '800',
-    color: '#E9F8E2',
+    color: '#12392C',
   },
   emptyText: {
     paddingVertical: 16,
-    color: '#E9F8E2',
+    color: '#12392C',
     fontSize: 13,
     fontWeight: '800',
   },
