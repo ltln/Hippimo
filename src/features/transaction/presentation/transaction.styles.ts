@@ -213,6 +213,17 @@ export const styles = StyleSheet.create({
     color: '#245442',
     fontWeight: '900',
   },
+  statisticsContent: {
+    minHeight: 360,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statisticsText: {
+    color: '#245442',
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
   controlCard: {
     backgroundColor: '#CFECC2',
     borderRadius: 16,

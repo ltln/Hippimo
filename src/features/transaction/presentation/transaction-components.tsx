@@ -5,24 +5,28 @@ import { Pressable, Text, View, type StyleProp, type TextStyle } from 'react-nat
 import type { TransactionItem } from '@/features/transaction/data/transaction-context'
 import { styles } from '@/features/transaction/presentation/transaction.styles'
 
-type TransactionPageTabKey = 'activity' | 'statistics'
+export type TransactionPageTabKey = 'activity' | 'statistics'
 
 const transactionPageTabs: {
   key: TransactionPageTabKey
   label: string
   icon: keyof typeof MaterialCommunityIcons.glyphMap
-  href: '/transaction' | '/transaction/statistics'
 }[] = [
-  { key: 'activity', label: 'Hoạt động', icon: 'history', href: '/transaction' },
+  { key: 'activity', label: 'Hoạt động', icon: 'history' },
   {
     key: 'statistics',
     label: 'Thống kê',
     icon: 'chart-box-outline',
-    href: '/transaction/statistics',
   },
 ]
 
-export function TransactionPageTabs({ activeTab }: { activeTab: TransactionPageTabKey }) {
+export function TransactionPageTabs({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: TransactionPageTabKey
+  onTabChange: (tab: TransactionPageTabKey) => void
+}) {
   return (
     <View style={styles.pageTabs}>
       {transactionPageTabs.map((tab) => {
@@ -31,7 +35,7 @@ export function TransactionPageTabs({ activeTab }: { activeTab: TransactionPageT
         return (
           <Pressable
             key={tab.key}
-            onPress={() => router.push(tab.href)}
+            onPress={() => onTabChange(tab.key)}
             style={[styles.pageTab, active && styles.pageTabActive]}
           >
             <MaterialCommunityIcons

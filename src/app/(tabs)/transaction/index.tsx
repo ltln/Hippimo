@@ -14,6 +14,7 @@ import {
   DetailCard,
   FilterChip,
   TransactionPageTabs,
+  type TransactionPageTabKey,
 } from '@/features/transaction/presentation/transaction-components'
 import { styles } from '@/features/transaction/presentation/transaction.styles'
 import { normalizeDateQuery } from '@/features/transaction/utils/transaction-utils'
@@ -35,6 +36,7 @@ export default function TransactionScreen() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [dateQuery, setDateQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [activePage, setActivePage] = useState<TransactionPageTabKey>('activity')
 
   const dateAndTypeFilteredTransactions = useMemo(() => {
     const normalizedDateQuery = normalizeDateQuery(dateQuery)
@@ -98,87 +100,97 @@ export default function TransactionScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 92 }]}
         showsVerticalScrollIndicator={false}
       >
-        <TransactionPageTabs activeTab='activity' />
+        <TransactionPageTabs activeTab={activePage} onTabChange={setActivePage} />
 
-        {showFilters ? (
-          <View style={styles.controlCard}>
-            <View style={styles.controlHeader}>
-              <Text style={styles.controlTitle}>Bộ lọc giao dịch</Text>
-            </View>
+        {activePage === 'activity' ? (
+          <>
+            {showFilters ? (
+              <View style={styles.controlCard}>
+                <View style={styles.controlHeader}>
+                  <Text style={styles.controlTitle}>Bộ lọc giao dịch</Text>
+                </View>
 
-            <Text style={styles.fieldLabel}>Loại giao dịch</Text>
-            <View style={styles.chipRow}>
-              {typeOptions.map((option) => (
-                <FilterChip
-                  key={option.key}
-                  label={option.label}
-                  active={typeFilter === option.key}
-                  onPress={() => setTypeFilter(option.key)}
-                />
-              ))}
-            </View>
+                <Text style={styles.fieldLabel}>Loại giao dịch</Text>
+                <View style={styles.chipRow}>
+                  {typeOptions.map((option) => (
+                    <FilterChip
+                      key={option.key}
+                      label={option.label}
+                      active={typeFilter === option.key}
+                      onPress={() => setTypeFilter(option.key)}
+                    />
+                  ))}
+                </View>
 
-            <Text style={[styles.fieldLabel, styles.fieldSpacing]}>Tìm theo ngày, tháng, năm</Text>
-            <View style={styles.searchField}>
-              <MaterialCommunityIcons name='calendar-month-outline' size={18} color='#245442' />
-              <TextInput
-                value={dateQuery}
-                onChangeText={setDateQuery}
-                placeholder='VD: 07-04-2026, 04-2026 hoặc 2026'
-                placeholderTextColor='#245442'
-                style={styles.searchInput}
-              />
-            </View>
-          </View>
-        ) : null}
-
-        <AiInsightCard transactions={dateAndTypeFilteredTransactions} />
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryTabsContent}
-          style={styles.categoryTabs}
-        >
-          {categoryOptions.map((category) => {
-            const active = categoryFilter === category
-            const label = category === 'all' ? 'Tất cả' : category
-
-            return (
-              <Pressable
-                key={category}
-                style={styles.categoryTab}
-                onPress={() => setCategoryFilter(category)}
-              >
-                <Text style={[styles.categoryTabText, active && styles.categoryTabTextActive]}>
-                  {label}
+                <Text style={[styles.fieldLabel, styles.fieldSpacing]}>
+                  Tìm theo ngày, tháng, năm
                 </Text>
-                {active ? <View style={styles.categoryTabIndicator} /> : null}
-              </Pressable>
-            )
-          })}
-        </ScrollView>
+                <View style={styles.searchField}>
+                  <MaterialCommunityIcons name='calendar-month-outline' size={18} color='#245442' />
+                  <TextInput
+                    value={dateQuery}
+                    onChangeText={setDateQuery}
+                    placeholder='VD: 07-04-2026, 04-2026 hoặc 2026'
+                    placeholderTextColor='#245442'
+                    style={styles.searchInput}
+                  />
+                </View>
+              </View>
+            ) : null}
 
-        {filteredTransactions.map((item) => (
-          <DetailCard
-            key={item.id}
-            item={item}
-            onDelete={() => {
-              const id = item.id
-              const title = item.title
-              confirmDelete('Xóa giao dịch', `Bạn có chắc muốn xóa ${title}?`, async () => {
-                try {
-                  await deleteTransaction(id)
-                } catch (error) {
-                  Alert.alert(
-                    'Không xóa được giao dịch',
-                    error instanceof Error ? error.message : 'Vui lòng thử lại.',
-                  )
-                }
-              })
-            }}
-          />
-        ))}
+            <AiInsightCard transactions={dateAndTypeFilteredTransactions} />
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryTabsContent}
+              style={styles.categoryTabs}
+            >
+              {categoryOptions.map((category) => {
+                const active = categoryFilter === category
+                const label = category === 'all' ? 'Tất cả' : category
+
+                return (
+                  <Pressable
+                    key={category}
+                    style={styles.categoryTab}
+                    onPress={() => setCategoryFilter(category)}
+                  >
+                    <Text style={[styles.categoryTabText, active && styles.categoryTabTextActive]}>
+                      {label}
+                    </Text>
+                    {active ? <View style={styles.categoryTabIndicator} /> : null}
+                  </Pressable>
+                )
+              })}
+            </ScrollView>
+
+            {filteredTransactions.map((item) => (
+              <DetailCard
+                key={item.id}
+                item={item}
+                onDelete={() => {
+                  const id = item.id
+                  const title = item.title
+                  confirmDelete('Xóa giao dịch', `Bạn có chắc muốn xóa ${title}?`, async () => {
+                    try {
+                      await deleteTransaction(id)
+                    } catch (error) {
+                      Alert.alert(
+                        'Không xóa được giao dịch',
+                        error instanceof Error ? error.message : 'Vui lòng thử lại.',
+                      )
+                    }
+                  })
+                }}
+              />
+            ))}
+          </>
+        ) : (
+          <View style={styles.statisticsContent}>
+            <Text style={styles.statisticsText}>Nội dung thống kê</Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   )
