@@ -1,5 +1,7 @@
 import { StyleSheet } from 'react-native'
 
+import { Typography } from '@/config/constants/theme'
+
 export const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -13,6 +15,13 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginBottom: 34,
+    position: 'relative',
+  },
+  backButton: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    zIndex: 2,
   },
   aiMarkFrame: {
     width: 42,
@@ -27,7 +36,7 @@ export const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: Typography.screenHeaderFontSize,
     fontWeight: '900',
     color: '#081A13',
     letterSpacing: 0,
@@ -44,7 +53,7 @@ export const styles = StyleSheet.create({
   },
   promptFrameInner: {
     borderRadius: 12,
-    backgroundColor: '#128A3F',
+    backgroundColor: '#79C77C',
   },
   promptCard: {
     minHeight: 112,
@@ -73,7 +82,7 @@ export const styles = StyleSheet.create({
     gap: 10,
     paddingLeft: 18,
     paddingRight: 8,
-    backgroundColor: '#063D2D',
+    backgroundColor: '#12392C',
   },
   input: {
     flex: 1,
@@ -90,7 +99,7 @@ export const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0B5B3F',
+    backgroundColor: '#12392C',
   },
   chatList: {
     gap: 12,
@@ -127,11 +136,11 @@ export const styles = StyleSheet.create({
   },
   userBubble: {
     borderBottomRightRadius: 6,
-    backgroundColor: '#063D2D',
+    backgroundColor: '#12392C',
   },
   assistantBubble: {
     borderBottomLeftRadius: 6,
-    backgroundColor: '#EDF8F1',
+    backgroundColor: '#DDF2D2',
   },
   messageText: {
     fontSize: 13,

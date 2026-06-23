@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
-import { router } from 'expo-router'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
+import { router } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
@@ -14,7 +14,6 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { saveScanningDebugResult } from '@/features/scanner/data/scanning-debug-store'
 import { extractReceiptFieldsFromImage } from '@/features/scanner/utils/receipt-ocr'
 
 export default function ScannerScreen() {
@@ -54,8 +53,13 @@ export default function ScannerScreen() {
       setScanError(null)
       setIsScanning(true)
       const result = await extractReceiptFieldsFromImage(receiptImageUri)
-      const id = saveScanningDebugResult(result)
-      router.push({ pathname: '/scanning-debug', params: { id } } as never)
+      router.push({
+        pathname: '/add-transaction',
+        params: {
+          amount: result.amount ? String(Math.round(result.amount)) : '',
+          receiptImageUri: result.preprocessedImageUri,
+        },
+      } as never)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Receipt OCR failed.'
       setScanError(message)
@@ -69,7 +73,7 @@ export default function ScannerScreen() {
       return
     }
 
-    const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 })
+    const photo = await cameraRef.current.takePictureAsync({ quality: 0.75 })
 
     if (photo?.uri) {
       await scanImage(photo.uri)
@@ -83,7 +87,7 @@ export default function ScannerScreen() {
 
     const pickedImage = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      quality: 1,
+      quality: 0.85,
     })
 
     if (!pickedImage.canceled && pickedImage.assets[0]?.uri) {
@@ -109,7 +113,7 @@ export default function ScannerScreen() {
 
         <View style={styles.scanArea}>
           <View style={styles.scanTitlePill}>
-            <Text style={styles.scanTitle}>Scan receipt</Text>
+            <Text style={styles.scanTitle}>Quét hóa đơn</Text>
           </View>
           <ScanCorner position='topLeft' />
           <ScanCorner position='topRight' />
@@ -129,7 +133,7 @@ export default function ScannerScreen() {
               >
                 <Ionicons name='image-outline' size={20} color='#1B1B1B' />
               </Pressable>
-              <Text style={styles.actionLabel}>Image</Text>
+              <Text style={styles.actionLabel}>Chọn ảnh</Text>
             </View>
 
             <Pressable
@@ -214,7 +218,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 22,
     borderRadius: 20,
-    backgroundColor: '#16A34A',
+    backgroundColor: '#79C77C',
   },
   permissionButtonText: {
     color: '#FFFFFF',
@@ -249,7 +253,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 18,
     alignSelf: 'center',
-    backgroundColor: '#16A34A',
+    backgroundColor: '#79C77C',
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -264,7 +268,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 44,
     height: 44,
-    borderColor: '#16A34A',
+    borderColor: '#79C77C',
   },
   cornerTop: {
     top: 0,

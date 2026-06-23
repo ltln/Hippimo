@@ -4,11 +4,11 @@ export const colors = {
   background: '#f8f5ef',
   border: '#5e7468',
   dark: '#111111',
-  green: '#003d2b',
+  green: '#12392C',
   muted: '#7f807c',
   placeholder: '#8a8a86',
   surface: '#ffffff',
-  success: '#064e3b',
+  success: '#12392C',
   error: '#a33024',
 }
 

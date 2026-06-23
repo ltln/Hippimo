@@ -51,3 +51,7 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 })
+
+export const Typography = {
+  screenHeaderFontSize: 24,
+}

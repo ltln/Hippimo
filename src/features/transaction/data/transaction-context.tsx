@@ -1,8 +1,25 @@
 import type { ComponentProps, PropsWithChildren } from 'react'
-import { createContext, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
-export type TransactionType = 'expense' | 'transfer'
+import { useAuth } from '@/features/auth/data/auth-context'
+import { listCategories } from '@/features/category/data/category-api'
+import type { Category } from '@/features/category/domain/category.types'
+import {
+  createTransaction,
+  deleteTransaction as deleteTransactionFromApi,
+  listTransactions,
+  updateTransaction as updateTransactionFromApi,
+} from '@/features/transaction/data/transaction-api'
+import type {
+  ApiTransactionType,
+  Transaction,
+} from '@/features/transaction/domain/transaction.types'
+import { getCategoryColor, getCategoryIcon } from '@/features/transaction/utils/transaction-form'
+import { useWallets } from '@/features/wallet/data/wallet-context'
+import { useBudgets } from '@/shared/contexts/budget-context'
+
+export type TransactionType = 'income' | 'expense' | 'transfer'
 
 export type TransactionItem = {
   id: string
@@ -11,16 +28,20 @@ export type TransactionItem = {
   amountValue: number
   dateLabel: string
   dateISO: string
+  timeLabel?: string
   icon: ComponentProps<typeof MaterialCommunityIcons>['name']
   iconBackground: string
   type: TransactionType
+  categoryId?: string
   walletId?: string
+  receiptImageUri?: string
   transferFromWalletId?: string
   transferToWalletId?: string
   detail: {
     amountDisplay: string
     amountColor: string
     date: string
+    time?: string
     tags: string[]
     note: string
     aiSuggestion?: string
@@ -32,194 +53,345 @@ export type TransactionItem = {
 
 type TransactionContextValue = {
   transactions: TransactionItem[]
-  addTransaction: (transaction: TransactionItem) => void
-  updateTransaction: (transaction: TransactionItem) => void
-  deleteTransaction: (id: string) => void
+  addTransaction: (transaction: TransactionItem) => Promise<void>
+  updateTransaction: (transaction: TransactionItem) => Promise<void>
+  deleteTransaction: (id: string) => Promise<void>
+  refreshTransactions: () => Promise<void>
 }
-
-const initialTransactions: TransactionItem[] = [
-  {
-    id: 'fuel',
-    title: 'Đổ xăng',
-    amount: '-50.000 VND',
-    amountValue: -50000,
-    dateLabel: '07-04-2026',
-    dateISO: '2026-04-07',
-    icon: 'motorbike',
-    iconBackground: '#F2A493',
-    type: 'expense',
-    walletId: 'cash-main',
-    detail: {
-      amountDisplay: '-50.000 VND',
-      amountColor: '#FFB0A4',
-      date: '07-04-2026',
-      tags: ['Ví 1', 'Đổ xăng dùm Lê Thành Phát :)))'],
-      note: 'Khoản chi này chiếm 5% ngân sách tháng của bạn. Bạn đang chi tiêu rất hợp lý!',
-      footer: 'Đổ xăng',
-      walletType: 'cash',
-      rightContent: 'icon',
-    },
-  },
-  {
-    id: 'topup',
-    title: 'Nạp game',
-    amount: '200.000 VND',
-    amountValue: 200000,
-    dateLabel: '07-04-2026',
-    dateISO: '2026-04-07',
-    icon: 'gamepad-variant-outline',
-    iconBackground: '#7E63F4',
-    type: 'transfer',
-    transferFromWalletId: 'bank-main',
-    transferToWalletId: 'momo-main',
-    detail: {
-      amountDisplay: '200.000 VND',
-      amountColor: '#79F4A6',
-      date: '07-04-2026',
-      tags: ['Ví 2 -> Ví 4'],
-      note: 'Khoản chi này chiếm 5% ngân sách tháng của bạn. Bạn đang chi tiêu rất hợp lý!',
-      footer: 'NGÂN HÀNG',
-      rightContent: 'bank-transfer',
-    },
-  },
-  {
-    id: 'rent',
-    title: 'Đóng tiền nhà',
-    amount: '-23.000 VND',
-    amountValue: -23000,
-    dateLabel: '06-04-2026',
-    dateISO: '2026-04-06',
-    icon: 'home-city-outline',
-    iconBackground: '#3D94C6',
-    type: 'expense',
-    walletId: 'bank-main',
-    detail: {
-      amountDisplay: '-23.000 VND',
-      amountColor: '#FFDFD7',
-      date: '06-04-2026',
-      tags: ['Ví 2', 'Tiền nhà tháng 4'],
-      note: 'Khoản chi cố định đang được theo dõi ổn định. Bạn có thể đặt nhắc trước ngày đến hạn.',
-      footer: 'Đóng tiền nhà',
-      walletType: 'bank',
-      rightContent: 'icon',
-    },
-  },
-  {
-    id: 'market',
-    title: 'Đi chợ',
-    amount: '-56.300 VND',
-    amountValue: -56300,
-    dateLabel: '05-04-2026',
-    dateISO: '2026-04-05',
-    icon: 'basket-outline',
-    iconBackground: '#F0C65A',
-    type: 'expense',
-    walletId: 'cash-main',
-    detail: {
-      amountDisplay: '-56.300 VND',
-      amountColor: '#FFE0B8',
-      date: '05-04-2026',
-      tags: ['Ví 1', 'Mua đồ ăn và trái cây'],
-      note: 'Chi tiêu sinh hoạt hôm nay nằm trong mức an toàn. Nhóm ăn uống vẫn đang được kiểm soát tốt.',
-      footer: 'Đi chợ',
-      walletType: 'cash',
-      rightContent: 'icon',
-    },
-  },
-  {
-    id: 'insurance',
-    title: 'Đóng bảo hiểm',
-    amount: '-7.200 VND',
-    amountValue: -7200,
-    dateLabel: '02-04-2026',
-    dateISO: '2026-04-02',
-    icon: 'shield-check-outline',
-    iconBackground: '#3897C7',
-    type: 'expense',
-    walletId: 'bank-main',
-    detail: {
-      amountDisplay: '-7.200 VND',
-      amountColor: '#D4F8E6',
-      date: '02-04-2026',
-      tags: ['Ví 2', 'Bảo hiểm xe máy'],
-      note: 'Giao dịch nhỏ nhưng lặp lại định kỳ. Nếu muốn, mình có thể tách riêng nhóm chi phí bảo hiểm sau.',
-      footer: 'Đóng bảo hiểm',
-      walletType: 'bank',
-      rightContent: 'icon',
-    },
-  },
-  {
-    id: 'oil',
-    title: 'Thay nhớt',
-    amount: '-24.300 VND',
-    amountValue: -24300,
-    dateLabel: '01-04-2026',
-    dateISO: '2026-04-01',
-    icon: 'motorbike-electric',
-    iconBackground: '#0E3F33',
-    type: 'expense',
-    walletId: 'cash-main',
-    detail: {
-      amountDisplay: '-24.300 VND',
-      amountColor: '#E1FFE5',
-      date: '01-04-2026',
-      tags: ['Ví 1', 'Bảo dưỡng định kỳ'],
-      note: 'Bảo dưỡng phương tiện đang được ghi nhận đầy đủ. Điều này sẽ giúp theo dõi tổng chi phí di chuyển dễ hơn.',
-      footer: 'Thay nhớt',
-      walletType: 'cash',
-      rightContent: 'icon',
-    },
-  },
-  {
-    id: 'wallet-transfer',
-    title: 'Chuyển ví dự phòng',
-    amount: '350.000 VND',
-    amountValue: 350000,
-    dateLabel: '29-03-2026',
-    dateISO: '2026-03-29',
-    icon: 'wallet-outline',
-    iconBackground: '#8A7DFF',
-    type: 'transfer',
-    transferFromWalletId: 'cash-main',
-    transferToWalletId: 'saving-main',
-    detail: {
-      amountDisplay: '350.000 VND',
-      amountColor: '#79F4A6',
-      date: '29-03-2026',
-      tags: ['Ví 1 -> Ví 3'],
-      note: 'Bạn đã chuyển tiền sang ví dự phòng đúng lúc, giúp ngân sách linh hoạt hơn cho tuần tới.',
-      footer: 'VÍ CHÍNH',
-      rightContent: 'bank-transfer',
-    },
-  },
-]
 
 const TransactionContext = createContext<TransactionContextValue | null>(null)
 
 export function TransactionProvider({ children }: PropsWithChildren) {
-  const [transactions, setTransactions] = useState<TransactionItem[]>(initialTransactions)
+  const { authResponse } = useAuth()
+  const { refreshWallets } = useWallets()
+  const { refreshBudgets } = useBudgets()
+  const accessToken = authResponse?.tokens.accessToken
+  const [transactions, setTransactions] = useState<TransactionItem[]>([])
 
-  const addTransaction = (transaction: TransactionItem) => {
-    setTransactions((current) => [transaction, ...current])
-  }
+  const requireAccessToken = useCallback(() => {
+    if (!accessToken) {
+      throw new Error('Bạn cần đăng nhập để thao tác với giao dịch.')
+    }
 
-  const updateTransaction = (transaction: TransactionItem) => {
-    setTransactions((current) =>
-      current.map((item) => (item.id === transaction.id ? transaction : item)),
+    return accessToken
+  }, [accessToken])
+
+  const loadTransactions = useCallback(async (token: string) => {
+    const [transactionData, categoryData] = await Promise.all([
+      listTransactions(token),
+      listCategories(token),
+    ])
+    setTransactions(
+      transactionData.map((transaction) => mapTransactionFromApi(transaction, categoryData)),
     )
+  }, [])
+
+  const refreshTransactions = useCallback(async () => {
+    if (!accessToken) {
+      setTransactions([])
+      return
+    }
+
+    await loadTransactions(accessToken)
+  }, [accessToken, loadTransactions])
+
+  const refreshRelatedData = useCallback(
+    async (action: 'create' | 'update' | 'delete') => {
+      const results = await Promise.allSettled([refreshWallets(), refreshBudgets()])
+      const [walletResult, budgetResult] = results
+
+      if (walletResult.status === 'rejected') {
+        console.error(`Refresh wallets after ${action} transaction failed`, walletResult.reason)
+      }
+
+      if (budgetResult.status === 'rejected') {
+        console.error(`Refresh budgets after ${action} transaction failed`, budgetResult.reason)
+      }
+    },
+    [refreshBudgets, refreshWallets],
+  )
+
+  useEffect(() => {
+    let isMounted = true
+
+    const load = async () => {
+      if (!accessToken) {
+        setTransactions([])
+        return
+      }
+
+      try {
+        const [transactionData, categoryData] = await Promise.all([
+          listTransactions(accessToken),
+          listCategories(accessToken),
+        ])
+
+        if (isMounted) {
+          setTransactions(
+            transactionData.map((transaction) => mapTransactionFromApi(transaction, categoryData)),
+          )
+        }
+      } catch (error) {
+        console.error('Load transactions failed', error)
+
+        if (isMounted) {
+          setTransactions([])
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      isMounted = false
+    }
+  }, [accessToken])
+
+  const addTransaction = async (transaction: TransactionItem) => {
+    const startedAt = Date.now()
+    const token = requireAccessToken()
+    console.log('[AddTransactionTiming] start', {
+      hasReceiptImage: Boolean(transaction.receiptImageUri),
+      amount: Math.abs(transaction.amountValue),
+      type: transaction.type,
+    })
+
+    const createdTransaction = await createTransaction(mapTransactionToApi(transaction), token)
+    console.log('[AddTransactionTiming] createTransaction done', {
+      durationMs: Date.now() - startedAt,
+    })
+
+    const categoriesStartedAt = Date.now()
+    const categories = await listCategories(token)
+    console.log('[AddTransactionTiming] listCategories done', {
+      durationMs: Date.now() - categoriesStartedAt,
+      totalDurationMs: Date.now() - startedAt,
+    })
+
+    setTransactions((current) => [
+      mapTransactionFromApi(createdTransaction, categories),
+      ...current,
+    ])
+    console.log('[AddTransactionTiming] local state updated', {
+      totalDurationMs: Date.now() - startedAt,
+    })
+
+    const refreshStartedAt = Date.now()
+    void refreshRelatedData('create')
+      .then(() => {
+        console.log('[AddTransactionTiming] background refresh done', {
+          durationMs: Date.now() - refreshStartedAt,
+          totalDurationMs: Date.now() - startedAt,
+        })
+      })
+      .catch((error) => {
+        console.error('Background refresh after create transaction failed', error)
+      })
   }
 
-  const deleteTransaction = (id: string) => {
+  const updateTransaction = async (transaction: TransactionItem) => {
+    const token = requireAccessToken()
+    const updatedTransaction = await updateTransactionFromApi(
+      transaction.id,
+      mapTransactionToApi(transaction),
+      token,
+    )
+    const categories = await listCategories(token)
+
+    setTransactions((current) =>
+      current.map((item) =>
+        item.id === transaction.id ? mapTransactionFromApi(updatedTransaction, categories) : item,
+      ),
+    )
+    await refreshRelatedData('update')
+  }
+
+  const deleteTransaction = async (id: string) => {
+    const token = requireAccessToken()
+    await deleteTransactionFromApi(id, token)
     setTransactions((current) => current.filter((transaction) => transaction.id !== id))
+    await refreshRelatedData('delete')
   }
 
   return (
     <TransactionContext.Provider
-      value={{ transactions, addTransaction, updateTransaction, deleteTransaction }}
+      value={{
+        transactions,
+        addTransaction,
+        updateTransaction,
+        deleteTransaction,
+        refreshTransactions,
+      }}
     >
       {children}
     </TransactionContext.Provider>
   )
+}
+
+function mapTransactionFromApi(transaction: Transaction, categories: Category[]): TransactionItem {
+  const amountValue = Number(transaction.amount)
+  const amount = Number.isNaN(amountValue) ? 0 : amountValue
+  const dateISO = transaction.transactionDate.slice(0, 10)
+  const dateLabel = formatDateLabel(dateISO)
+  const timeLabel = formatTimeLabel(transaction.transactionDate)
+  const category = categories.find((item) => item.categoryId === transaction.categoryId)
+  const categoryName = category?.name ?? 'Giao dịch'
+  const note = transaction.notes?.trim() || 'Không có ghi chú'
+
+  const formattedAmount = `${formatVnd(amount)} VND`
+
+  if (transaction.type === 'TRANSFER') {
+    return {
+      id: transaction.transactionId,
+      title: 'Chuyển tiền ví',
+      amount: formattedAmount,
+      amountValue: amount,
+      dateLabel,
+      dateISO,
+      timeLabel,
+      icon: 'wallet-outline',
+      iconBackground: '#8A7DFF',
+      type: 'transfer',
+      transferFromWalletId: transaction.walletId,
+      transferToWalletId: transaction.toWalletId ?? undefined,
+      receiptImageUri: undefined,
+      detail: {
+        amountDisplay: formattedAmount,
+        amountColor: '#79F4A6',
+        date: dateLabel,
+        time: timeLabel,
+        tags: [
+          transaction.toWalletId
+            ? `${transaction.walletId} -> ${transaction.toWalletId}`
+            : transaction.walletId,
+        ],
+        note,
+        aiSuggestion: 'Giao dịch chuyển tiền nội bộ',
+        footer: 'VÍ CHUYỂN',
+        rightContent: 'bank-transfer',
+      },
+    }
+  }
+
+  if (transaction.type === 'INCOME') {
+    return {
+      id: transaction.transactionId,
+      title: categoryName,
+      amount: `+${formattedAmount}`,
+      amountValue: amount,
+      dateLabel,
+      dateISO,
+      timeLabel,
+      icon:
+        (category?.icon as ComponentProps<typeof MaterialCommunityIcons>['name'] | undefined) ??
+        getCategoryIcon(categoryName),
+      iconBackground: category?.color ?? getCategoryColor(categoryName),
+      type: 'income',
+      categoryId: transaction.categoryId ?? undefined,
+      walletId: transaction.walletId,
+      receiptImageUri: undefined,
+      detail: {
+        amountDisplay: `+${formattedAmount}`,
+        amountColor: '#79F4A6',
+        date: dateLabel,
+        time: timeLabel,
+        tags: [transaction.walletId],
+        note,
+        aiSuggestion: `Khoản thu từ ${categoryName.toLowerCase()}`,
+        footer: categoryName,
+        rightContent: 'icon',
+      },
+    }
+  }
+
+  return {
+    id: transaction.transactionId,
+    title: categoryName,
+    amount: `-${formattedAmount}`,
+    amountValue: -amount,
+    dateLabel,
+    dateISO,
+    timeLabel,
+    icon:
+      (category?.icon as ComponentProps<typeof MaterialCommunityIcons>['name'] | undefined) ??
+      getCategoryIcon(categoryName),
+    iconBackground: category?.color ?? getCategoryColor(categoryName),
+    type: 'expense',
+    categoryId: transaction.categoryId ?? undefined,
+    walletId: transaction.walletId,
+    receiptImageUri: undefined,
+    detail: {
+      amountDisplay: `-${formattedAmount}`,
+      amountColor: '#FFDFD7',
+      date: dateLabel,
+      time: timeLabel,
+      tags: [transaction.walletId],
+      note,
+      aiSuggestion: `Có vẻ bạn đang chi cho ${categoryName.toLowerCase()}?`,
+      footer: categoryName,
+      rightContent: 'icon',
+    },
+  }
+}
+
+function mapTransactionToApi(transaction: TransactionItem) {
+  const amount = Math.abs(transaction.amountValue)
+
+  if (transaction.type === 'transfer') {
+    if (!transaction.transferFromWalletId || !transaction.transferToWalletId) {
+      throw new Error('Vui lòng chọn ví gửi và ví nhận.')
+    }
+
+    return {
+      walletId: transaction.transferFromWalletId,
+      toWalletId: transaction.transferToWalletId,
+      amount,
+      type: 'TRANSFER' as ApiTransactionType,
+      transactionDate: formatTransactionDateTime(transaction.dateISO, transaction.timeLabel),
+      notes: transaction.detail.note,
+      isExcludedFromReport: false,
+      isEssential: false,
+      receiptImageUri: transaction.receiptImageUri,
+    }
+  }
+
+  if (!transaction.walletId) {
+    throw new Error('Vui lòng chọn ví cho giao dịch.')
+  }
+
+  if (!transaction.categoryId) {
+    throw new Error('Vui lòng chọn danh mục từ dữ liệu database.')
+  }
+
+  return {
+    walletId: transaction.walletId,
+    categoryId: transaction.categoryId,
+    amount,
+    type: (transaction.type === 'income' ? 'INCOME' : 'EXPENSE') as ApiTransactionType,
+    transactionDate: formatTransactionDateTime(transaction.dateISO, transaction.timeLabel),
+    notes: transaction.detail.note,
+    isExcludedFromReport: false,
+    isEssential: false,
+    receiptImageUri: transaction.receiptImageUri,
+  }
+}
+
+function formatDateLabel(dateISO: string) {
+  const [year, month, day] = dateISO.split('-')
+  return `${day}-${month}-${year}`
+}
+
+function formatTimeLabel(transactionDate: string) {
+  const match = transactionDate.match(/T(\d{2}):(\d{2})/)
+  return match ? `${match[1]}:${match[2]}` : '00:00'
+}
+
+function formatTransactionDateTime(dateISO: string, timeLabel = '00:00') {
+  return `${dateISO}T${timeLabel}:00`
+}
+
+function formatVnd(value: number) {
+  return new Intl.NumberFormat('vi-VN').format(value)
 }
 
 export function useTransactions() {

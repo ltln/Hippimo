@@ -1,8 +1,12 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
+import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 import {
+  ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -13,52 +17,55 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { Typography } from '@/config/constants/theme'
+import { mapCategoriesToOptions, useCategories } from '@/features/category/data/use-categories'
 import type { TransactionItem } from '@/features/transaction/data/transaction-context'
-import { useWallets } from '@/features/wallet/data/wallet-context'
 import {
   buildTransaction,
   defaultTransactionFormValues,
   formatCurrencyInput,
+  getCategoryColor,
+  getCategoryIcon,
   normalizeDate,
+  normalizeTime,
   walletTypeToLabel,
   type CreateMode,
   type TransactionFormValues,
 } from '@/features/transaction/utils/transaction-form'
+import { useWallets } from '@/features/wallet/data/wallet-context'
 
 type SelectionOption = {
   value: string
   label: string
+  icon?: string | null
+  color?: string | null
 }
 
-const categoryOptions: SelectionOption[] = [
-  { value: 'Ăn uống', label: 'Ăn uống' },
-  { value: 'Di chuyển', label: 'Di chuyển' },
-  { value: 'Nhà cửa', label: 'Nhà cửa' },
-  { value: 'Giải trí', label: 'Giải trí' },
-  { value: 'Mua sắm', label: 'Mua sắm' },
-  { value: 'Làm đẹp', label: 'Làm đẹp' },
-]
 type TransactionFormProps = {
   title: string
   submitLabel: string
   initialValues?: TransactionFormValues
+  initialReceiptImageUri?: string
   transactionId?: string
-  onSubmit: (transaction: TransactionItem) => void
+  onSubmit: (transaction: TransactionItem) => Promise<void> | void
 }
 
 export function TransactionForm({
   title,
   submitLabel,
   initialValues = defaultTransactionFormValues,
+  initialReceiptImageUri,
   transactionId,
   onSubmit,
 }: TransactionFormProps) {
   const insets = useSafeAreaInsets()
+  const { categories } = useCategories({ status: 'ACTIVE' })
   const { wallets } = useWallets()
   const amountInputRef = useRef<TextInput>(null)
   const [mode, setMode] = useState<CreateMode>(initialValues.mode)
   const [amount, setAmount] = useState(initialValues.amount)
   const [amountFocused, setAmountFocused] = useState(false)
+  const [note, setNote] = useState(initialValues.note)
   const noteRef = useRef(initialValues.note)
   const lastExpenseCategoryRef = useRef(initialValues.expenseCategory)
   const [expenseWallet, setExpenseWallet] = useState(initialValues.expenseWallet)
@@ -68,7 +75,12 @@ export function TransactionForm({
   const [expenseCategory, setExpenseCategory] = useState(initialValues.expenseCategory)
   const [transferFromWallet, setTransferFromWallet] = useState(initialValues.transferFromWallet)
   const [transferToWallet, setTransferToWallet] = useState(initialValues.transferToWallet)
+  const [transactionTime, setTransactionTime] = useState(initialValues.transactionTime)
   const [transactionDate, setTransactionDate] = useState(initialValues.transactionDate)
+  const [receiptImageUri, setReceiptImageUri] = useState<string | null>(
+    initialReceiptImageUri ?? null,
+  )
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<
     | null
     | 'expenseWallet'
@@ -98,9 +110,72 @@ export function TransactionForm({
     [],
   )
 
+  const categoryOptions = useMemo(() => mapCategoriesToOptions(categories), [categories])
+
+  const selectedCategory = useMemo(
+    () => categoryOptions.find((option) => option.value === expenseCategory),
+    [categoryOptions, expenseCategory],
+  )
+
+  const suggestedNote = useMemo(() => {
+    const resolvedAmount = Number.parseInt(amount || '0', 10)
+    const formattedAmount = Number.isNaN(resolvedAmount)
+      ? null
+      : new Intl.NumberFormat('vi-VN').format(resolvedAmount)
+
+    if (mode === 'transfer') {
+      const fromWalletName = walletOptions.find(
+        (wallet) => wallet.value === transferFromWallet,
+      )?.label
+      const toWalletName = walletOptions.find((wallet) => wallet.value === transferToWallet)?.label
+
+      if (fromWalletName && toWalletName) {
+        return `Chuyển tiền từ ${fromWalletName} sang ${toWalletName}${formattedAmount ? `, số tiền ${formattedAmount} VND` : ''}.`
+      }
+
+      return 'Chuyển tiền giữa các ví.'
+    }
+
+    const walletName = walletOptions.find((wallet) => wallet.value === expenseWallet)?.label
+    const categoryName = selectedCategory?.label ?? expenseCategory
+
+    if (categoryName && walletName && formattedAmount) {
+      return `Chi ${formattedAmount} VND cho ${categoryName.toLowerCase()} bằng ví ${walletName}.`
+    }
+
+    if (categoryName && formattedAmount) {
+      return `Chi ${formattedAmount} VND cho ${categoryName.toLowerCase()}.`
+    }
+
+    if (categoryName) {
+      return `Chi tiêu cho ${categoryName.toLowerCase()}.`
+    }
+
+    return 'Gợi ý ghi chú sẽ hiện khi bạn chọn đủ thông tin giao dịch.'
+  }, [
+    amount,
+    expenseCategory,
+    expenseWallet,
+    mode,
+    selectedCategory?.label,
+    transferFromWallet,
+    transferToWallet,
+    walletOptions,
+  ])
+
+  useEffect(() => {
+    if (mode === 'expense' && categoryOptions.length) {
+      const hasCategory = categoryOptions.some((option) => option.value === expenseCategory)
+      if (!hasCategory && !initialValues.expenseCategory) {
+        setExpenseCategory(categoryOptions[0].value)
+      }
+    }
+  }, [categoryOptions, expenseCategory, initialValues.expenseCategory, mode])
+
   useEffect(() => {
     setMode(initialValues.mode)
     setAmount(initialValues.amount)
+    setNote(initialValues.note)
     noteRef.current = initialValues.note
     setExpenseWallet(initialValues.expenseWallet)
     setExpenseWalletType((initialValues as any)?.expenseWalletType || 'Tiền mặt')
@@ -111,8 +186,13 @@ export function TransactionForm({
         : initialValues.expenseCategory
     setTransferFromWallet(initialValues.transferFromWallet)
     setTransferToWallet(initialValues.transferToWallet)
+    setTransactionTime(initialValues.transactionTime)
     setTransactionDate(initialValues.transactionDate)
   }, [initialValues])
+
+  useEffect(() => {
+    setReceiptImageUri(initialReceiptImageUri ?? null)
+  }, [initialReceiptImageUri])
 
   useEffect(() => {
     if (mode === 'transfer') {
@@ -154,20 +234,68 @@ export function TransactionForm({
     return () => clearTimeout(timeout)
   }, [amountFocused])
 
+  useEffect(() => {
+    if (wallets.length === 0) {
+      return
+    }
+
+    if (!wallets.some((wallet) => wallet.id === expenseWallet)) {
+      setExpenseWallet(wallets[0].id)
+    }
+
+    if (!wallets.some((wallet) => wallet.id === transferFromWallet)) {
+      setTransferFromWallet(wallets[0].id)
+    }
+
+    if (!wallets.some((wallet) => wallet.id === transferToWallet)) {
+      setTransferToWallet(wallets[1]?.id ?? wallets[0].id)
+    }
+  }, [expenseWallet, transferFromWallet, transferToWallet, wallets])
+
   const adjustAmount = (delta: number) => {
     const numericAmount = Number.parseInt(amount || '0', 10)
     const nextAmount = Math.max(0, numericAmount + delta)
     setAmount(String(nextAmount))
   }
 
-  const handleReceiptScan = () => {
-    Alert.alert(
-      'Quét hóa đơn',
-      'Phương án tối ưu là chụp hoặc chọn ảnh hóa đơn trước, sau đó OCR để tự điền số tiền, ngày và ghi chú. Cách này nhẹ app hơn, ít lỗi hơn live camera OCR và dễ mở rộng về sau.',
+  const pickReceiptImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 1,
+    })
+
+    const asset = result.canceled ? null : result.assets[0]
+
+    if (!asset?.uri) {
+      return
+    }
+
+    const maxDimension = Math.max(asset.width ?? 0, asset.height ?? 0)
+    const fileSize = asset.fileSize ?? 0
+    const shouldOptimize = fileSize > 4 * 1024 * 1024 || maxDimension > 2200
+
+    if (!shouldOptimize) {
+      setReceiptImageUri(asset.uri)
+      return
+    }
+
+    const optimizedImage = await manipulateAsync(
+      asset.uri,
+      maxDimension > 2200 ? [{ resize: { width: 1800 } }] : [],
+      {
+        compress: 0.82,
+        format: SaveFormat.JPEG,
+      },
     )
+
+    setReceiptImageUri(optimizedImage.uri)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSubmitting) {
+      return
+    }
+
     const numericAmount = Number.parseInt(amount || '0', 10)
 
     if (!numericAmount) {
@@ -175,10 +303,26 @@ export function TransactionForm({
       return
     }
 
+    if (wallets.length === 0) {
+      Alert.alert('Chưa có ví', 'Bạn hãy tạo ví trước khi lưu giao dịch.')
+      return
+    }
+
+    if (mode === 'expense' && !selectedCategory?.id) {
+      Alert.alert('Thiếu danh mục', 'Bạn hãy chọn danh mục từ dữ liệu database.')
+      return
+    }
+
     const normalizedDate = normalizeDate(transactionDate)
+    const normalizedTime = normalizeTime(transactionTime)
 
     if (!normalizedDate) {
       Alert.alert('Ngày chưa hợp lệ', 'Bạn hãy nhập ngày theo dạng dd/mm/yyyy.')
+      return
+    }
+
+    if (!normalizedTime) {
+      Alert.alert('Giờ chưa hợp lệ', 'Bạn hãy nhập giờ theo dạng hh:mm.')
       return
     }
 
@@ -186,41 +330,52 @@ export function TransactionForm({
       id: transactionId,
       amountValue: numericAmount,
       date: normalizedDate,
+      time: normalizedTime,
       mode,
       note: noteRef.current,
       expenseWallet,
       expenseWalletTypeLabel: expenseWalletType,
       expenseCategory,
+      categoryId: selectedCategory?.id,
+      categoryIcon:
+        (selectedCategory?.icon as TransactionItem['icon'] | undefined) ??
+        getCategoryIcon(expenseCategory),
+      categoryColor: selectedCategory?.color ?? getCategoryColor(expenseCategory),
       transferFromWallet,
       transferToWallet,
+      receiptImageUri,
       wallets,
     })
 
-    onSubmit(transaction)
+    try {
+      setIsSubmitting(true)
+      await onSubmit(transaction)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 10, 24) }]}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: Math.max(insets.top + 10, 24),
+            paddingBottom: Math.max(insets.bottom + 34, 34),
+          },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
             <Ionicons name='arrow-back' size={24} color='#0B1D17' />
           </Pressable>
-          <Text style={styles.headerTitle}>{title}</Text>
+          <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
+            {title}
+          </Text>
           <View style={styles.headerSpacer} />
         </View>
-
-        <Pressable style={styles.card} onPress={handleReceiptScan}>
-          <View style={styles.scanIconWrap}>
-            <MaterialCommunityIcons name='barcode-scan' size={40} color='#FFFFFF' />
-          </View>
-          <View style={styles.receiptPill}>
-            <Text style={styles.receiptPillText}>Quét hóa đơn</Text>
-          </View>
-        </Pressable>
 
         <View style={[styles.card, styles.amountCard]}>
           <View style={styles.amountControls}>
@@ -307,14 +462,25 @@ export function TransactionForm({
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>DANH MỤC</Text>
           <View style={styles.categoryContainer}>
-            <TextInput
-              value={expenseCategory}
-              onChangeText={setExpenseCategory}
-              placeholder='Nhập tên danh mục'
-              placeholderTextColor='#B8CEC3'
+            <Pressable
               style={styles.categoryInput}
-              editable={mode === 'expense'}
-            />
+              onPress={() => {
+                if (mode === 'expense') {
+                  setOpenDropdown('expenseCategory')
+                }
+              }}
+              disabled={mode !== 'expense'}
+            >
+              <Text
+                style={[
+                  styles.categoryInputText,
+                  !expenseCategory && styles.categoryInputPlaceholder,
+                ]}
+                numberOfLines={1}
+              >
+                {expenseCategory || 'Chọn danh mục'}
+              </Text>
+            </Pressable>
             <Pressable
               style={styles.categoryListButton}
               onPress={() => {
@@ -324,20 +490,40 @@ export function TransactionForm({
               }}
               disabled={mode !== 'expense'}
             >
-              <Ionicons name='list' size={22} color={mode === 'expense' ? '#FFFFFF' : '#B8CEC3'} />
+              <Ionicons name='list' size={22} color={mode === 'expense' ? '#FFFFFF' : '#DDF2D2'} />
             </Pressable>
           </View>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>NGÀY GIAO DỊCH</Text>
-          <View style={styles.dateRow}>
-            <View style={styles.datePill}>
+          <Text style={styles.cardEyebrow}>Time</Text>
+          <Text style={styles.sectionTitle}>THỜI GIAN GIAO DỊCH</Text>
+          <View style={styles.dateTimeRow}>
+            <View style={[styles.dateTimeField, styles.timeField]}>
+              <View style={styles.dateTimeLabelRow}>
+                <Ionicons name='time-outline' size={16} color='#E9F8E2' />
+                <Text style={styles.dateTimeLabel}>Giờ</Text>
+              </View>
+              <TextInput
+                value={transactionTime}
+                onChangeText={setTransactionTime}
+                placeholder='hh:mm'
+                placeholderTextColor='#DDF2D2'
+                keyboardType='numbers-and-punctuation'
+                maxLength={5}
+                style={styles.timeInput}
+              />
+            </View>
+            <View style={[styles.dateTimeField, styles.dateField]}>
+              <View style={styles.dateTimeLabelRow}>
+                <Ionicons name='calendar-outline' size={16} color='#E9F8E2' />
+                <Text style={styles.dateTimeLabel}>Ngày</Text>
+              </View>
               <TextInput
                 value={transactionDate}
                 onChangeText={setTransactionDate}
                 placeholder='dd/mm/yyyy'
-                placeholderTextColor='#CFE8DA'
+                placeholderTextColor='#DDF2D2'
                 keyboardType='numbers-and-punctuation'
                 style={styles.dateInput}
               />
@@ -348,26 +534,77 @@ export function TransactionForm({
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>GHI CHÚ</Text>
           <TextInput
-            defaultValue={initialValues.note}
+            value={note}
             onChangeText={(text) => {
+              setNote(text)
               noteRef.current = text
             }}
             placeholder='Nhập ghi chú cho giao dịch'
-            placeholderTextColor='#B8CEC3'
+            placeholderTextColor='#DDF2D2'
             style={styles.noteInput}
             multiline={true}
             submitBehavior='blurAndSubmit'
             autoCorrect={false}
             spellCheck={false}
           />
+          <Pressable
+            style={styles.noteSuggestionChip}
+            onPress={() => {
+              setNote(suggestedNote)
+              noteRef.current = suggestedNote
+            }}
+          >
+            <Ionicons name='sparkles-outline' size={16} color='#12392C' />
+            <Text style={styles.noteSuggestionText}>{suggestedNote}</Text>
+          </Pressable>
           <View style={styles.noteHintRow}>
-            <MaterialCommunityIcons name='emoticon-excited-outline' size={18} color='#072D20' />
-            <Text style={styles.noteHint}>Có vẻ bạn đang chi cho ăn uống ?</Text>
+            <MaterialCommunityIcons name='emoticon-excited-outline' size={18} color='#12392C' />
+            <Text style={styles.noteHint}>Chạm gợi ý để dùng nhanh làm ghi chú.</Text>
           </View>
         </View>
 
-        <Pressable style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>{submitLabel}</Text>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>TẢI ẢNH HÓA ĐƠN</Text>
+          {receiptImageUri ? (
+            <View style={styles.receiptPreviewCard}>
+              <Image source={{ uri: receiptImageUri }} style={styles.receiptPreviewImage} />
+              <View style={styles.receiptPreviewActions}>
+                <Pressable style={styles.receiptSecondaryButton} onPress={pickReceiptImage}>
+                  <Ionicons name='image-outline' size={16} color='#12392C' />
+                  <Text style={styles.receiptSecondaryButtonText}>Replace</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.receiptDangerButton}
+                  onPress={() => setReceiptImageUri(null)}
+                >
+                  <Ionicons name='trash-outline' size={16} color='#B3261E' />
+                  <Text style={styles.receiptDangerButtonText}>Remove</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <Pressable style={styles.receiptUploadButton} onPress={pickReceiptImage}>
+              <View style={styles.receiptUploadIconWrap}>
+                <Ionicons name='cloud-upload-outline' size={22} color='#12392C' />
+              </View>
+              <View style={styles.receiptUploadBody}>
+                <Text style={styles.receiptUploadTitle}>Chọn ảnh từ thiết bị</Text>
+                <Text style={styles.receiptUploadText}>PNG, JPG, hoặc ảnh từ thư viện</Text>
+              </View>
+              <Ionicons name='chevron-forward' size={18} color='#12392C' />
+            </Pressable>
+          )}
+        </View>
+
+        <Pressable
+          style={[styles.saveButton, isSubmitting && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={isSubmitting}
+        >
+          <View style={styles.saveButtonContent}>
+            {isSubmitting ? <ActivityIndicator size='small' color='#FFFFFF' /> : null}
+            <Text style={styles.saveButtonText}>{isSubmitting ? 'ĐANG LƯU...' : submitLabel}</Text>
+          </View>
         </Pressable>
       </ScrollView>
 
@@ -468,12 +705,12 @@ function SelectorBlock({
       {interactive ? (
         <Pressable style={styles.selectorPill} onPress={onPress}>
           <Text style={styles.selectorValue}>{selectedOption?.label ?? value}</Text>
-          {!hideChevron && <Ionicons name='chevron-down' size={16} color='#E6FFF2' />}
+          {!hideChevron && <Ionicons name='chevron-down' size={16} color='#E9F8E2' />}
         </Pressable>
       ) : (
         <View style={styles.selectorPill}>
           <Text style={styles.selectorValue}>{selectedOption?.label ?? value}</Text>
-          {!hideChevron && <Ionicons name='chevron-down' size={16} color='#E6FFF2' />}
+          {!hideChevron && <Ionicons name='chevron-down' size={16} color='#E9F8E2' />}
         </View>
       )}
     </View>
@@ -498,18 +735,38 @@ function SelectionModal({
       <Pressable style={styles.modalBackdrop} onPress={onClose}>
         <Pressable style={styles.modalCard} onPress={() => {}}>
           <Text style={styles.modalTitle}>{title}</Text>
-          {options.map((option) => (
-            <Pressable
-              key={option.value}
-              style={styles.modalOption}
-              onPress={() => onSelect(option.value)}
-            >
-              <View style={styles.modalOptionContent}>
-                <Text style={styles.modalOptionText}>{option.label}</Text>
-              </View>
-              <Ionicons name='chevron-forward' size={16} color='#1B4D39' />
-            </Pressable>
-          ))}
+          <ScrollView style={styles.modalOptionsScroll} showsVerticalScrollIndicator={false}>
+            {options.map((option) => (
+              <Pressable
+                key={option.value}
+                style={styles.modalOption}
+                onPress={() => onSelect(option.value)}
+              >
+                <View style={styles.modalOptionContent}>
+                  {option.icon || option.color ? (
+                    <View
+                      style={[
+                        styles.modalOptionIcon,
+                        { backgroundColor: option.color ?? '#12392C' },
+                      ]}
+                    >
+                      {option.icon ? (
+                        <MaterialCommunityIcons
+                          name={
+                            option.icon as ComponentProps<typeof MaterialCommunityIcons>['name']
+                          }
+                          size={16}
+                          color='#FFFFFF'
+                        />
+                      ) : null}
+                    </View>
+                  ) : null}
+                  <Text style={styles.modalOptionText}>{option.label}</Text>
+                </View>
+                <Ionicons name='chevron-forward' size={16} color='#12392C' />
+              </Pressable>
+            ))}
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -519,7 +776,7 @@ function SelectionModal({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F4F1EF',
+    backgroundColor: '#F7FBF5',
   },
   content: {
     paddingHorizontal: 14,
@@ -539,7 +796,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 18,
+    fontSize: Typography.screenHeaderFontSize,
     fontWeight: '900',
     color: '#0B1D17',
     letterSpacing: 0.4,
@@ -548,28 +805,18 @@ const styles = StyleSheet.create({
     width: 36,
   },
   card: {
-    backgroundColor: '#198B3F',
+    backgroundColor: '#79C77C',
     borderRadius: 14,
     padding: 14,
     marginBottom: 14,
   },
-  scanIconWrap: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  receiptPill: {
-    alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginTop: 8,
-  },
-  receiptPillText: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#0A1D16',
+  cardEyebrow: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: '#E9F8E2',
+    marginBottom: 6,
   },
   amountCard: {
     paddingVertical: 18,
@@ -580,14 +827,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   amountButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#083B2A',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#12392C',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#0E5A40',
+    borderColor: '#12392C',
   },
   amountCenter: {
     flex: 1,
@@ -612,7 +859,7 @@ const styles = StyleSheet.create({
   amountCurrency: {
     marginTop: 2,
     fontSize: 15,
-    color: '#E8FFF0',
+    color: '#E9F8E2',
   },
   segmentRow: {
     flexDirection: 'row',
@@ -622,17 +869,17 @@ const styles = StyleSheet.create({
   },
   segmentButton: {
     borderRadius: 999,
-    backgroundColor: '#7F9B90',
+    backgroundColor: '#CFECC2',
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   segmentButtonActive: {
-    backgroundColor: '#050505',
+    backgroundColor: '#12392C',
   },
   segmentLabel: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#F6FFFA',
+    color: '#12392C',
   },
   segmentLabelActive: {
     color: '#FFFFFF',
@@ -641,8 +888,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
     color: '#F6FFF9',
+    marginBottom: 8,
+    textAlign: 'left',
+  },
+  sectionDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#E9F8E2',
     marginBottom: 12,
-    textAlign: 'center',
   },
   choiceGrid: {
     flexDirection: 'row',
@@ -666,7 +919,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 7,
@@ -681,27 +934,63 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  datePill: {
-    backgroundColor: '#063629',
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+  dateTimeColumn: {
+    alignItems: 'center',
+    gap: 10,
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dateTimeField: {
+    flex: 1,
+    backgroundColor: '#12392C',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  timeField: {
+    flex: 0.9,
+  },
+  dateField: {
+    flex: 1.3,
+  },
+  dateTimeLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  dateTimeLabel: {
+    color: '#E9F8E2',
+    fontSize: 12,
+    fontWeight: '800',
   },
   dateInput: {
-    minWidth: 160,
-    fontSize: 24,
+    width: '100%',
+    fontSize: 22,
     fontWeight: '900',
     color: '#FFFFFF',
-    textAlign: 'center',
+    textAlign: 'left',
+    paddingVertical: 0,
+  },
+  timeInput: {
+    width: '100%',
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textAlign: 'left',
     paddingVertical: 0,
   },
   noteInput: {
-    backgroundColor: '#F2F5F2',
-    borderRadius: 999,
+    backgroundColor: '#DDF2D2',
+    borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 12,
+    minHeight: 96,
     fontSize: 14,
-    color: '#072D20',
+    color: '#12392C',
+    textAlignVertical: 'top',
   },
   noteHintRow: {
     marginTop: 12,
@@ -709,18 +998,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  noteSuggestionChip: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderRadius: 14,
+    backgroundColor: '#F7FBF5',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  noteSuggestionText: {
+    flex: 1,
+    color: '#12392C',
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 17,
+  },
   noteHint: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#072D20',
+    color: '#12392C',
   },
   saveButton: {
-    backgroundColor: '#072D20',
+    backgroundColor: '#12392C',
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
     marginTop: 12,
+  },
+  saveButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  saveButtonDisabled: {
+    opacity: 0.55,
   },
   saveButtonText: {
     color: '#FFFFFF',
@@ -737,9 +1052,13 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: '100%',
-    backgroundColor: '#F4F1EF',
+    maxHeight: '80%',
+    backgroundColor: '#F7FBF5',
     borderRadius: 18,
     padding: 16,
+  },
+  modalOptionsScroll: {
+    maxHeight: 360,
   },
   modalTitle: {
     fontSize: 18,
@@ -764,13 +1083,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  modalOptionIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   modalOptionText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1B4D39',
+    color: '#12392C',
   },
   input: {
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     borderRadius: 12,
     padding: 12,
     color: '#FFFFFF',
@@ -784,21 +1110,103 @@ const styles = StyleSheet.create({
   },
   categoryInput: {
     flex: 1,
-    backgroundColor: '#F2F5F2',
+    backgroundColor: '#DDF2D2',
     borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  categoryInputText: {
     fontSize: 14,
-    color: '#072D20',
+    color: '#12392C',
     fontWeight: '700',
+  },
+  categoryInputPlaceholder: {
+    color: '#245442',
   },
   categoryListButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#063629',
+    backgroundColor: '#12392C',
     borderRadius: 12,
     width: 44,
     height: 44,
+  },
+  receiptUploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+    backgroundColor: '#DDF2D2',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  receiptUploadIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F7FBF5',
+  },
+  receiptUploadBody: {
+    flex: 1,
+  },
+  receiptUploadTitle: {
+    color: '#12392C',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  receiptUploadText: {
+    marginTop: 2,
+    color: '#315245',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  receiptPreviewCard: {
+    overflow: 'hidden',
+    borderRadius: 16,
+    backgroundColor: '#DDF2D2',
+  },
+  receiptPreviewImage: {
+    width: '100%',
+    height: 210,
+    backgroundColor: '#CFECC2',
+  },
+  receiptPreviewActions: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+  },
+  receiptSecondaryButton: {
+    flex: 1,
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: '#F7FBF5',
+  },
+  receiptSecondaryButtonText: {
+    color: '#12392C',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  receiptDangerButton: {
+    flex: 1,
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: '#FFE3DE',
+  },
+  receiptDangerButtonText: {
+    color: '#B3261E',
+    fontSize: 13,
+    fontWeight: '900',
   },
 })

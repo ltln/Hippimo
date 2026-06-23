@@ -14,6 +14,10 @@ import {
   sendEmailLoginToBackend,
   sendGoogleTokenToBackend,
 } from '@/features/auth/data/google-auth-api'
+import {
+  setAuthSessionInvalidatedHandler,
+  setAuthSessionManagerSession,
+} from '@/features/auth/data/auth-session-manager'
 import type { GoogleLoginResponse, LoginState } from '@/features/auth/domain/google-auth.types'
 import { useGoogleOAuth } from '@/features/auth/presentation/hooks/use-google-oauth'
 import { getRefreshToken } from '@/features/auth/utils/auth-tokens'
@@ -38,6 +42,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [loginState, setLoginState] = useState<LoginState>('restoring')
   const [message, setMessage] = useState('Restoring login session...')
   const googleOAuth = useGoogleOAuth()
+
+  useEffect(() => {
+    setAuthSessionManagerSession(authResponse)
+  }, [authResponse])
+
+  useEffect(() => {
+    setAuthSessionInvalidatedHandler(() => {
+      setAuthResponse(null)
+      setLoginState('idle')
+      setMessage('Session expired. Please sign in again.')
+    })
+
+    return () => {
+      setAuthSessionInvalidatedHandler(null)
+    }
+  }, [])
 
   useEffect(() => {
     let isMounted = true
@@ -248,7 +268,7 @@ export function AuthGate({ children }: PropsWithChildren) {
   if (loginState === 'restoring' && rootSegment !== 'login') {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator color='#0A251B' />
+        <ActivityIndicator color='#12392C' />
       </View>
     )
   }

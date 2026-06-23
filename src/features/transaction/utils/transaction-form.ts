@@ -15,19 +15,35 @@ export type TransactionFormValues = {
   expenseWalletType: string
   transferFromWallet: string
   transferToWallet: string
+  transactionTime: string
   transactionDate: string
+}
+
+function padTimePart(value: number) {
+  return String(value).padStart(2, '0')
+}
+
+function getCurrentTransactionDateInput() {
+  const now = new Date()
+  return `${padTimePart(now.getDate())}/${padTimePart(now.getMonth() + 1)}/${now.getFullYear()}`
+}
+
+function getCurrentTransactionTimeInput() {
+  const now = new Date()
+  return `${padTimePart(now.getHours())}:${padTimePart(now.getMinutes())}`
 }
 
 export const defaultTransactionFormValues: TransactionFormValues = {
   mode: 'expense',
-  amount: '400000',
+  amount: '',
   note: '',
   expenseWallet: 'cash-main',
-  expenseCategory: 'Ăn uống',
+  expenseCategory: '',
   expenseWalletType: 'Tiền mặt',
   transferFromWallet: 'cash-main',
   transferToWallet: 'momo-main',
-  transactionDate: '29/04/2026',
+  transactionTime: getCurrentTransactionTimeInput(),
+  transactionDate: getCurrentTransactionDateInput(),
 }
 
 export function formatCurrencyInput(value: string) {
@@ -50,29 +66,58 @@ export function normalizeDate(value: string) {
   }
 }
 
+export function normalizeTime(value: string) {
+  const normalized = value.trim().replace('.', ':')
+  const pattern = /^(\d{1,2}):(\d{2})$/
+  const match = normalized.match(pattern)
+
+  if (!match) {
+    return null
+  }
+
+  const hour = Number.parseInt(match[1], 10)
+  const minute = Number.parseInt(match[2], 10)
+
+  if (hour > 23 || minute > 59) {
+    return null
+  }
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
 export function buildTransaction({
   id,
   amountValue,
   date,
+  time,
   mode,
   note,
   expenseWallet,
   expenseWalletTypeLabel,
   expenseCategory,
+  categoryId,
+  categoryIcon,
+  categoryColor,
   transferFromWallet,
   transferToWallet,
+  receiptImageUri,
   wallets,
 }: {
   id?: string
   amountValue: number
   date: { display: string; iso: string }
+  time: string
   mode: CreateMode
   note: string
   expenseWallet: string
   expenseWalletTypeLabel?: string
   expenseCategory: string
+  categoryId?: string
+  categoryIcon?: TransactionItem['icon']
+  categoryColor?: string | null
   transferFromWallet: string
   transferToWallet: string
+  receiptImageUri?: string | null
   wallets: WalletItem[]
 }): TransactionItem {
   const rawId = id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -96,15 +141,18 @@ export function buildTransaction({
       amountValue,
       dateLabel: date.display,
       dateISO: date.iso,
+      timeLabel: time,
       icon: 'wallet-outline',
       iconBackground: '#8A7DFF',
       type: 'transfer',
+      receiptImageUri: receiptImageUri ?? undefined,
       transferFromWalletId: fromWalletItem?.id,
       transferToWalletId: toWalletItem?.id,
       detail: {
         amountDisplay: formattedAmount,
         amountColor: '#79F4A6',
         date: date.display,
+        time,
         tags: [`${fromWalletName} -> ${toWalletName}`],
         note: normalizedNote,
         aiSuggestion: 'Giao dịch chuyển tiền nội bộ',
@@ -121,14 +169,18 @@ export function buildTransaction({
     amountValue: -amountValue,
     dateLabel: date.display,
     dateISO: date.iso,
-    icon: mapCategoryIcon(expenseCategory),
-    iconBackground: mapCategoryColor(expenseCategory),
+    timeLabel: time,
+    icon: categoryIcon ?? getCategoryIcon(expenseCategory),
+    iconBackground: categoryColor ?? getCategoryColor(expenseCategory),
     type: 'expense',
+    categoryId,
     walletId: expenseWalletItem?.id,
+    receiptImageUri: receiptImageUri ?? undefined,
     detail: {
       amountDisplay: `-${formattedAmount}`,
       amountColor: '#FFDFD7',
       date: date.display,
+      time,
       tags: [expenseWalletName],
       note: normalizedNote,
       aiSuggestion: `Có vẻ bạn đang chi cho ${expenseCategory.toLowerCase()}?`,
@@ -161,6 +213,10 @@ export function getTransactionFormValues(
         transaction.transferFromWalletId ??
         matchKnownWalletId(fromWalletRaw || transaction.detail.footer, wallets),
       transferToWallet: transaction.transferToWalletId ?? matchKnownWalletId(toWalletRaw, wallets),
+      transactionTime:
+        transaction.timeLabel ??
+        transaction.detail.time ??
+        defaultTransactionFormValues.transactionTime,
       transactionDate,
     }
   }
@@ -178,6 +234,10 @@ export function getTransactionFormValues(
     expenseWalletType: walletTypeToLabel(resolvedWalletType),
     transferFromWallet: defaultTransactionFormValues.transferFromWallet,
     transferToWallet: defaultTransactionFormValues.transferToWallet,
+    transactionTime:
+      transaction.timeLabel ??
+      transaction.detail.time ??
+      defaultTransactionFormValues.transactionTime,
     transactionDate,
   }
 }
@@ -226,7 +286,7 @@ function matchKnownWalletId(value: string | undefined, wallets: WalletItem[]) {
   return findWallet(wallets, value)?.id ?? wallets[0].id
 }
 
-function mapCategoryIcon(category: string): TransactionItem['icon'] {
+export function getCategoryIcon(category: string): TransactionItem['icon'] {
   const upper = category.toUpperCase()
   if (upper === 'TIỀN MẶT') return 'cash'
   if (upper === 'NGÂN HÀNG') return 'bank'
@@ -242,9 +302,9 @@ function mapCategoryIcon(category: string): TransactionItem['icon'] {
   return pickFromList(category, customCategoryIcons)
 }
 
-function mapCategoryColor(category: string) {
+export function getCategoryColor(category: string) {
   const upper = category.toUpperCase()
-  if (upper === 'TIỀN MẶT') return '#128A3D'
+  if (upper === 'TIỀN MẶT') return '#79C77C'
   if (upper === 'NGÂN HÀNG') return '#3D94C6'
   if (upper === 'TIẾT KIỆM') return '#F0C65A'
   if (upper === 'VÍ ĐIỆN TỬ') return '#7E63F4'
