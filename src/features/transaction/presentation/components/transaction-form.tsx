@@ -18,7 +18,10 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Typography } from '@/config/constants/theme'
+import { useAuth } from '@/features/auth/data/auth-context'
+import { createCategory } from '@/features/category/data/category-api'
 import { mapCategoriesToOptions, useCategories } from '@/features/category/data/use-categories'
+import type { CategoryType } from '@/features/category/domain/category.types'
 import type { TransactionItem } from '@/features/transaction/data/transaction-context'
 import {
   buildTransaction,
@@ -59,7 +62,9 @@ export function TransactionForm({
   onSubmit,
 }: TransactionFormProps) {
   const insets = useSafeAreaInsets()
-  const { categories } = useCategories({ status: 'ACTIVE' })
+  const { authResponse } = useAuth()
+  const accessToken = authResponse?.tokens.accessToken
+  const { categories, refresh: refreshCategories } = useCategories({ status: 'ACTIVE' })
   const { wallets } = useWallets()
   const amountInputRef = useRef<TextInput>(null)
   const [mode, setMode] = useState<CreateMode>(initialValues.mode)
@@ -81,6 +86,7 @@ export function TransactionForm({
     initialReceiptImageUri ?? null,
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<
     | null
     | 'expenseWallet'
@@ -353,6 +359,34 @@ export function TransactionForm({
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleCreateCategory = async (name: string, type: CategoryType) => {
+    if (!accessToken) {
+      Alert.alert('Chưa đăng nhập', 'Bạn cần đăng nhập để lưu danh mục.')
+      return
+    }
+
+    const trimmedName = name.trim()
+
+    if (!trimmedName) {
+      Alert.alert('Thiếu tên danh mục', 'Bạn hãy nhập tên danh mục trước khi lưu.')
+      return
+    }
+
+    await createCategory(
+      {
+        name: trimmedName,
+        type,
+        icon: getCategoryIcon(trimmedName),
+        color: getCategoryColor(trimmedName),
+      },
+      accessToken,
+    )
+
+    await refreshCategories()
+    setExpenseCategory(trimmedName)
+    setIsCategoryFormOpen(false)
   }
 
   return (
@@ -633,10 +667,20 @@ export function TransactionForm({
         title='Chọn danh mục'
         options={categoryOptions}
         onClose={() => setOpenDropdown(null)}
+        actionLabel='Tạo danh mục mới'
+        onActionPress={() => {
+          setOpenDropdown(null)
+          setIsCategoryFormOpen(true)
+        }}
         onSelect={(value) => {
           setExpenseCategory(value)
           setOpenDropdown(null)
         }}
+      />
+      <CreateCategoryModal
+        visible={isCategoryFormOpen}
+        onClose={() => setIsCategoryFormOpen(false)}
+        onSubmit={handleCreateCategory}
       />
       <SelectionModal
         visible={openDropdown === 'transferFromWallet'}
@@ -718,16 +762,20 @@ function SelectorBlock({
 }
 
 function SelectionModal({
+  actionLabel,
   visible,
   title,
   options,
   onClose,
+  onActionPress,
   onSelect,
 }: {
+  actionLabel?: string
   visible: boolean
   title: string
   options: SelectionOption[]
   onClose: () => void
+  onActionPress?: () => void
   onSelect: (value: string) => void
 }) {
   return (
@@ -735,6 +783,12 @@ function SelectionModal({
       <Pressable style={styles.modalBackdrop} onPress={onClose}>
         <Pressable style={styles.modalCard} onPress={() => {}}>
           <Text style={styles.modalTitle}>{title}</Text>
+          {actionLabel && onActionPress ? (
+            <Pressable style={styles.modalActionButton} onPress={onActionPress}>
+              <Ionicons name='add-circle-outline' size={18} color='#FFFFFF' />
+              <Text style={styles.modalActionButtonText}>{actionLabel}</Text>
+            </Pressable>
+          ) : null}
           <ScrollView style={styles.modalOptionsScroll} showsVerticalScrollIndicator={false}>
             {options.map((option) => (
               <Pressable
@@ -767,6 +821,94 @@ function SelectionModal({
               </Pressable>
             ))}
           </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  )
+}
+
+function CreateCategoryModal({
+  visible,
+  onClose,
+  onSubmit,
+}: {
+  visible: boolean
+  onClose: () => void
+  onSubmit: (name: string, type: CategoryType) => Promise<void>
+}) {
+  const [name, setName] = useState('')
+  const [type, setType] = useState<CategoryType>('EXPENSE')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (visible) {
+      setName('')
+      setType('EXPENSE')
+    }
+  }, [visible])
+
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true)
+      await onSubmit(name, type)
+    } catch (error) {
+      Alert.alert(
+        'Không lưu được danh mục',
+        error instanceof Error ? error.message : 'Vui lòng thử lại.',
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType='fade' onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable style={styles.categoryModalCard} onPress={() => {}}>
+          <Text style={styles.modalTitle}>Tạo danh mục</Text>
+
+          <Text style={styles.categoryModalLabel}>Tên danh mục</Text>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder='Nhập tên danh mục'
+            placeholderTextColor='#245442'
+            style={styles.categoryModalInput}
+          />
+
+          <Text style={styles.categoryModalLabel}>Loại danh mục</Text>
+          <View style={styles.categoryTypeRow}>
+            {(['EXPENSE', 'INCOME'] as CategoryType[]).map((item) => (
+              <Pressable
+                key={item}
+                style={[
+                  styles.categoryTypeButton,
+                  type === item && styles.categoryTypeButtonActive,
+                ]}
+                onPress={() => setType(item)}
+              >
+                <Text
+                  style={[
+                    styles.categoryTypeButtonText,
+                    type === item && styles.categoryTypeButtonTextActive,
+                  ]}
+                >
+                  {item === 'EXPENSE' ? 'Chi tiêu' : 'Thu nhập'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Pressable
+            disabled={isSubmitting}
+            style={[styles.categorySaveButton, isSubmitting && styles.saveButtonDisabled]}
+            onPress={handleSubmit}
+          >
+            {isSubmitting ? <ActivityIndicator size='small' color='#FFFFFF' /> : null}
+            <Text style={styles.categorySaveButtonText}>
+              {isSubmitting ? 'ĐANG LƯU...' : 'LƯU'}
+            </Text>
+          </Pressable>
         </Pressable>
       </Pressable>
     </Modal>
@@ -1094,6 +1236,81 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: '#12392C',
+  },
+  modalActionButton: {
+    minHeight: 44,
+    borderRadius: 12,
+    backgroundColor: '#12392C',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  modalActionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  categoryModalCard: {
+    width: '100%',
+    backgroundColor: '#F7FBF5',
+    borderRadius: 18,
+    padding: 16,
+  },
+  categoryModalLabel: {
+    color: '#245442',
+    fontSize: 13,
+    fontWeight: '900',
+    marginBottom: 8,
+  },
+  categoryModalInput: {
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    color: '#0B1D17',
+    fontSize: 15,
+    fontWeight: '800',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    marginBottom: 16,
+  },
+  categoryTypeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 18,
+  },
+  categoryTypeButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 999,
+    backgroundColor: '#CFECC2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryTypeButtonActive: {
+    backgroundColor: '#12392C',
+  },
+  categoryTypeButtonText: {
+    color: '#12392C',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  categoryTypeButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  categorySaveButton: {
+    minHeight: 48,
+    borderRadius: 999,
+    backgroundColor: '#79C77C',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  categorySaveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
   },
   input: {
     backgroundColor: '#12392C',

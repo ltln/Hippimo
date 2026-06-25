@@ -13,6 +13,7 @@ import {
   type WalletItem,
   useWallets,
 } from '@/features/wallet/data/wallet-context'
+import { useBudgets } from '@/shared/contexts/budget-context'
 
 type MaterialIconName = ComponentProps<typeof MaterialCommunityIcons>['name']
 
@@ -23,6 +24,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets()
   const { wallets } = useWallets()
   const { transactions } = useTransactions()
+  const { budgets } = useBudgets()
 
   const totalBalance = useMemo(
     () => wallets.reduce((total, wallet) => total + wallet.balance, 0),
@@ -108,6 +110,8 @@ export default function DashboardScreen() {
           onActionPress={() => router.push('/(tabs)/wallet')}
         />
         <View style={styles.walletList}>
+          {visibleWallets.length === 0 ? <EmptyMessage text='Bạn chưa thêm ví nào' /> : null}
+
           {visibleWallets.map((wallet, index) => (
             <WalletRow key={wallet.id} wallet={wallet} fallbackIndex={index} />
           ))}
@@ -119,6 +123,10 @@ export default function DashboardScreen() {
           onActionPress={() => router.push('/(tabs)/transaction')}
         />
         <View style={styles.transactionsCard}>
+          {recentTransactions.length === 0 ? (
+            <EmptyMessage text='Không có giao dịch gần đây' />
+          ) : null}
+
           {recentTransactions.map((transaction) => (
             <View key={transaction.id} style={styles.transactionRow}>
               <View
@@ -150,36 +158,50 @@ export default function DashboardScreen() {
           onActionPress={() => router.push('/(tabs)/chat_ai')}
         />
         <View style={styles.aiCard}>
-          <View style={styles.budgetRow}>
-            <View style={styles.aiIconBubble}>
-              <MaterialCommunityIcons name='chart-donut' size={23} color='#0E372B' />
-            </View>
-            <View style={styles.budgetBody}>
-              <View style={styles.budgetHeader}>
-                <Text style={styles.budgetTitle}>Ngân sách tháng</Text>
-                <Text style={styles.budgetPercent}>68%</Text>
-              </View>
-              <View style={styles.progressTrack}>
-                <View style={styles.progressFill} />
-              </View>
-            </View>
-          </View>
+          {budgets.length === 0 ? <EmptyMessage text='Bạn chưa tạo khoản ngân sách nào' /> : null}
 
-          <View style={styles.insightRow}>
-            <View style={styles.aiIconBubble}>
-              <Ionicons name='sparkles-outline' size={22} color='#0E372B' />
+          {budgets.length > 0 ? (
+            <View style={styles.budgetRow}>
+              <View style={styles.aiIconBubble}>
+                <MaterialCommunityIcons name='chart-donut' size={23} color='#0E372B' />
+              </View>
+              <View style={styles.budgetBody}>
+                <View style={styles.budgetHeader}>
+                  <Text style={styles.budgetTitle}>Ngân sách tháng</Text>
+                  <Text style={styles.budgetPercent}>68%</Text>
+                </View>
+                <View style={styles.progressTrack}>
+                  <View style={styles.progressFill} />
+                </View>
+              </View>
             </View>
-            <View style={styles.insightBody}>
-              <Text style={styles.insightTitle}>AI gợi ý</Text>
-              <Text style={styles.insightText}>
-                Chi tiêu ăn uống đang ổn định. Bạn có thể giữ thêm 300.000 VND cho cuối tuần.
-              </Text>
+          ) : null}
+
+          {recentTransactions.length === 0 ? (
+            <EmptyMessage text='Không có giao dịch gần đây' />
+          ) : null}
+
+          {recentTransactions.length > 0 ? (
+            <View style={styles.insightRow}>
+              <View style={styles.aiIconBubble}>
+                <Ionicons name='sparkles-outline' size={22} color='#0E372B' />
+              </View>
+              <View style={styles.insightBody}>
+                <Text style={styles.insightTitle}>AI gợi ý</Text>
+                <Text style={styles.insightText}>
+                  Chi tiêu ăn uống đang ổn định. Bạn có thể giữ thêm 300.000 VND cho cuối tuần.
+                </Text>
+              </View>
             </View>
-          </View>
+          ) : null}
         </View>
       </ScrollView>
     </SafeAreaView>
   )
+}
+
+function EmptyMessage({ text }: { text: string }) {
+  return <Text style={styles.emptyText}>{text}</Text>
 }
 
 function SectionHeader({
@@ -380,6 +402,15 @@ const styles = StyleSheet.create({
   },
   walletList: {
     gap: 10,
+  },
+  emptyText: {
+    color: '#245442',
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    textAlign: 'center',
   },
   walletRow: {
     minHeight: 60,

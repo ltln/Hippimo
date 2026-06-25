@@ -86,6 +86,10 @@ export default function BudgetsScreen() {
           </View>
         )}
 
+        {filteredBudgets.length === 0 ? (
+          <Text style={styles.emptyText}>Bạn chưa tạo khoản ngân sách nào</Text>
+        ) : null}
+
         {filteredBudgets.map((budget) => (
           <BudgetCard
             key={budget.id}

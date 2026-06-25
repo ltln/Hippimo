@@ -38,7 +38,7 @@ export default function RootLayout() {
                       <Stack.Screen name='(tabs)' options={{ headerShown: false }} />
                       <Stack.Screen
                         name='add-transaction'
-                        options={{ headerShown: false, animationDuration: 100 }}
+                        options={{ headerShown: false, animationDuration: 60 }}
                       />
                       <Stack.Screen
                         name='edit-transaction'
@@ -46,7 +46,7 @@ export default function RootLayout() {
                       />
                       <Stack.Screen
                         name='add-wallet'
-                        options={{ headerShown: false, animationDuration: 100 }}
+                        options={{ headerShown: false, animationDuration: 60 }}
                       />
                       <Stack.Screen
                         name='edit-wallet'
@@ -54,7 +54,7 @@ export default function RootLayout() {
                       />
                       <Stack.Screen
                         name='add-budget'
-                        options={{ headerShown: false, animationDuration: 100 }}
+                        options={{ headerShown: false, animationDuration: 60 }}
                       />
                       <Stack.Screen
                         name='edit-budget'

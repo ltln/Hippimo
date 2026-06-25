@@ -69,6 +69,10 @@ export default function WalletScreen() {
           </View>
         ) : null}
 
+        {filteredWallets.length === 0 ? (
+          <Text style={styles.emptyText}>Bạn chưa thêm ví nào</Text>
+        ) : null}
+
         {filteredWallets.map((wallet) => (
           <WalletCard
             key={wallet.id}

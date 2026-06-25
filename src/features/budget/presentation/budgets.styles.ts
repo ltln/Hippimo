@@ -40,6 +40,15 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   searchInput: { flex: 1, fontSize: 13, color: '#0B2C20' },
+  emptyText: {
+    color: '#245442',
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 22,
+    textAlign: 'center',
+  },
   budgetCard: {
     backgroundColor: '#79C77C',
     borderRadius: 16,
