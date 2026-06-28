@@ -19,17 +19,31 @@ export type TransactionFormValues = {
   transactionDate: string
 }
 
+function padTimePart(value: number) {
+  return String(value).padStart(2, '0')
+}
+
+function getCurrentTransactionDateInput() {
+  const now = new Date()
+  return `${padTimePart(now.getDate())}/${padTimePart(now.getMonth() + 1)}/${now.getFullYear()}`
+}
+
+function getCurrentTransactionTimeInput() {
+  const now = new Date()
+  return `${padTimePart(now.getHours())}:${padTimePart(now.getMinutes())}`
+}
+
 export const defaultTransactionFormValues: TransactionFormValues = {
   mode: 'expense',
-  amount: '400000',
+  amount: '',
   note: '',
   expenseWallet: 'cash-main',
   expenseCategory: '',
   expenseWalletType: 'Tiền mặt',
   transferFromWallet: 'cash-main',
   transferToWallet: 'momo-main',
-  transactionTime: '00:00',
-  transactionDate: '29/04/2026',
+  transactionTime: getCurrentTransactionTimeInput(),
+  transactionDate: getCurrentTransactionDateInput(),
 }
 
 export function formatCurrencyInput(value: string) {
@@ -86,6 +100,7 @@ export function buildTransaction({
   categoryColor,
   transferFromWallet,
   transferToWallet,
+  receiptImageUri,
   wallets,
 }: {
   id?: string
@@ -102,6 +117,7 @@ export function buildTransaction({
   categoryColor?: string | null
   transferFromWallet: string
   transferToWallet: string
+  receiptImageUri?: string | null
   wallets: WalletItem[]
 }): TransactionItem {
   const rawId = id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -129,6 +145,7 @@ export function buildTransaction({
       icon: 'wallet-outline',
       iconBackground: '#8A7DFF',
       type: 'transfer',
+      receiptImageUri: receiptImageUri ?? undefined,
       transferFromWalletId: fromWalletItem?.id,
       transferToWalletId: toWalletItem?.id,
       detail: {
@@ -158,6 +175,7 @@ export function buildTransaction({
     type: 'expense',
     categoryId,
     walletId: expenseWalletItem?.id,
+    receiptImageUri: receiptImageUri ?? undefined,
     detail: {
       amountDisplay: `-${formattedAmount}`,
       amountColor: '#FFDFD7',

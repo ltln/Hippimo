@@ -34,6 +34,7 @@ export type TransactionItem = {
   type: TransactionType
   categoryId?: string
   walletId?: string
+  receiptImageUri?: string
   transferFromWalletId?: string
   transferToWalletId?: string
   detail: {
@@ -147,15 +148,45 @@ export function TransactionProvider({ children }: PropsWithChildren) {
   }, [accessToken])
 
   const addTransaction = async (transaction: TransactionItem) => {
+    const startedAt = Date.now()
     const token = requireAccessToken()
+    console.log('[AddTransactionTiming] start', {
+      hasReceiptImage: Boolean(transaction.receiptImageUri),
+      amount: Math.abs(transaction.amountValue),
+      type: transaction.type,
+    })
+
     const createdTransaction = await createTransaction(mapTransactionToApi(transaction), token)
+    console.log('[AddTransactionTiming] createTransaction done', {
+      durationMs: Date.now() - startedAt,
+    })
+
+    const categoriesStartedAt = Date.now()
     const categories = await listCategories(token)
+    console.log('[AddTransactionTiming] listCategories done', {
+      durationMs: Date.now() - categoriesStartedAt,
+      totalDurationMs: Date.now() - startedAt,
+    })
 
     setTransactions((current) => [
       mapTransactionFromApi(createdTransaction, categories),
       ...current,
     ])
-    await refreshRelatedData('create')
+    console.log('[AddTransactionTiming] local state updated', {
+      totalDurationMs: Date.now() - startedAt,
+    })
+
+    const refreshStartedAt = Date.now()
+    void refreshRelatedData('create')
+      .then(() => {
+        console.log('[AddTransactionTiming] background refresh done', {
+          durationMs: Date.now() - refreshStartedAt,
+          totalDurationMs: Date.now() - startedAt,
+        })
+      })
+      .catch((error) => {
+        console.error('Background refresh after create transaction failed', error)
+      })
   }
 
   const updateTransaction = async (transaction: TransactionItem) => {
@@ -223,6 +254,7 @@ function mapTransactionFromApi(transaction: Transaction, categories: Category[])
       type: 'transfer',
       transferFromWalletId: transaction.walletId,
       transferToWalletId: transaction.toWalletId ?? undefined,
+      receiptImageUri: undefined,
       detail: {
         amountDisplay: formattedAmount,
         amountColor: '#79F4A6',
@@ -257,6 +289,7 @@ function mapTransactionFromApi(transaction: Transaction, categories: Category[])
       type: 'income',
       categoryId: transaction.categoryId ?? undefined,
       walletId: transaction.walletId,
+      receiptImageUri: undefined,
       detail: {
         amountDisplay: `+${formattedAmount}`,
         amountColor: '#79F4A6',
@@ -286,6 +319,7 @@ function mapTransactionFromApi(transaction: Transaction, categories: Category[])
     type: 'expense',
     categoryId: transaction.categoryId ?? undefined,
     walletId: transaction.walletId,
+    receiptImageUri: undefined,
     detail: {
       amountDisplay: `-${formattedAmount}`,
       amountColor: '#FFDFD7',
@@ -317,6 +351,7 @@ function mapTransactionToApi(transaction: TransactionItem) {
       notes: transaction.detail.note,
       isExcludedFromReport: false,
       isEssential: false,
+      receiptImageUri: transaction.receiptImageUri,
     }
   }
 
@@ -337,6 +372,7 @@ function mapTransactionToApi(transaction: TransactionItem) {
     notes: transaction.detail.note,
     isExcludedFromReport: false,
     isEssential: false,
+    receiptImageUri: transaction.receiptImageUri,
   }
 }
 

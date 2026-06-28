@@ -236,9 +236,12 @@ export const styles = StyleSheet.create({
     color: '#12392C',
   },
   emptyText: {
-    paddingVertical: 16,
-    color: '#12392C',
-    fontSize: 13,
+    color: '#245442',
+    fontSize: 14,
     fontWeight: '800',
+    lineHeight: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 22,
+    textAlign: 'center',
   },
 })

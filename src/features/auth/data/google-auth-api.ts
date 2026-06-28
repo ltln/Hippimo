@@ -8,6 +8,7 @@ import type {
 } from '@/features/auth/domain/google-auth.types'
 import { getAuthTokens } from '@/features/auth/utils/auth-tokens'
 import { formatValue } from '@/features/auth/utils/format-value'
+import { logBackendRequest, logBackendResponse } from '@/shared/utils/http-debug'
 
 export const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
 export const googleAndroidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
@@ -88,71 +89,69 @@ const validateLoginResponse = (responseBody: unknown, providerLabel: string) => 
 }
 
 export const sendEmailLoginToBackend = async (payload: EmailLoginDto) => {
-  console.log('Sending email login request', {
-    email: payload.email,
-    endpoint: emailLoginEndpoint,
-  })
-
-  const response = await fetch(emailLoginEndpoint, {
+  const requestInit: RequestInit = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
+  }
+
+  logBackendRequest('POST', emailLoginEndpoint, {
+    body: payload,
+    headers: requestInit.headers,
   })
 
-  console.log('Email login backend response', {
-    endpoint: emailLoginEndpoint,
-    ok: response.ok,
-    status: response.status,
-  })
+  const response = await fetch(emailLoginEndpoint, requestInit)
+
+  logBackendResponse('POST', emailLoginEndpoint, response)
 
   return validateLoginResponse(await readResponseBody(response), 'email')
 }
 
 export const sendGoogleTokenToBackend = async (payload: GoogleMobileLoginDto) => {
-  console.log('Sending Google login request', {
-    deviceId: payload.deviceId,
-    endpoint: googleLoginEndpoint,
-    hasIdToken: Boolean(payload.idToken),
-  })
-
-  const response = await fetch(googleLoginEndpoint, {
+  const requestInit: RequestInit = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
+  }
+
+  logBackendRequest('POST', googleLoginEndpoint, {
+    body: {
+      ...payload,
+      idToken: payload.idToken ? '[redacted]' : '',
+    },
+    headers: requestInit.headers,
   })
 
-  console.log('Google login backend response', {
-    endpoint: googleLoginEndpoint,
-    ok: response.ok,
-    status: response.status,
-  })
+  const response = await fetch(googleLoginEndpoint, requestInit)
+
+  logBackendResponse('POST', googleLoginEndpoint, response)
 
   return validateLoginResponse(await readResponseBody(response), 'Google')
 }
 
 export const refreshBackendToken = async (payload: RefreshTokenDto) => {
-  console.log('Sending refresh token request', {
-    endpoint: refreshTokenEndpoint,
-    hasRefreshToken: Boolean(payload.refreshToken),
-  })
-
-  const response = await fetch(refreshTokenEndpoint, {
+  const requestInit: RequestInit = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
+  }
+
+  logBackendRequest('POST', refreshTokenEndpoint, {
+    body: {
+      refreshToken: payload.refreshToken ? '[redacted]' : '',
+    },
+    headers: requestInit.headers,
   })
 
-  console.log('Refresh token backend response', {
-    endpoint: refreshTokenEndpoint,
-    ok: response.ok,
-    status: response.status,
-  })
+  const response = await fetch(refreshTokenEndpoint, requestInit)
+
+  logBackendResponse('POST', refreshTokenEndpoint, response)
 
   const responseBody = await readResponseBody(response)
 
@@ -170,24 +169,24 @@ export const refreshBackendToken = async (payload: RefreshTokenDto) => {
 }
 
 export const logoutBackendSession = async (payload: RefreshTokenDto) => {
-  console.log('Sending logout request', {
-    endpoint: logoutEndpoint,
-    hasRefreshToken: Boolean(payload.refreshToken),
-  })
-
-  const response = await fetch(logoutEndpoint, {
+  const requestInit: RequestInit = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
+  }
+
+  logBackendRequest('POST', logoutEndpoint, {
+    body: {
+      refreshToken: payload.refreshToken ? '[redacted]' : '',
+    },
+    headers: requestInit.headers,
   })
 
-  console.log('Logout backend response', {
-    endpoint: logoutEndpoint,
-    ok: response.ok,
-    status: response.status,
-  })
+  const response = await fetch(logoutEndpoint, requestInit)
+
+  logBackendResponse('POST', logoutEndpoint, response)
 
   const responseBody = await readResponseBody(response)
 

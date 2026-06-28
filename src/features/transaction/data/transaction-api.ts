@@ -4,6 +4,8 @@ import type {
   Transaction,
   UpdateTransactionDto,
 } from '@/features/transaction/domain/transaction.types'
+import { fetchWithAuthRetry } from '@/features/auth/data/authenticated-fetch'
+import { logBackendRequest, logBackendResponse } from '@/shared/utils/http-debug'
 
 export const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.example.com'
 
@@ -59,24 +61,102 @@ const buildAuthHeaders = (accessToken: string) => ({
   Authorization: `Bearer ${accessToken}`,
 })
 
+const getReceiptMimeType = (uri: string) => {
+  const normalizedUri = uri.toLowerCase()
+
+  if (normalizedUri.endsWith('.png')) {
+    return 'image/png'
+  }
+
+  if (normalizedUri.endsWith('.heic')) {
+    return 'image/heic'
+  }
+
+  if (normalizedUri.endsWith('.webp')) {
+    return 'image/webp'
+  }
+
+  return 'image/jpeg'
+}
+
+const getReceiptFilename = (uri: string) => {
+  const sanitizedUri = uri.split('?')[0] ?? uri
+  const segments = sanitizedUri.split('/')
+  const candidate = segments.at(-1)
+
+  return candidate && candidate.includes('.')
+    ? candidate
+    : `receipt.${getReceiptMimeType(uri).split('/')[1]}`
+}
+
+const createTransactionFormData = (payload: CreateTransactionDto) => {
+  const formData = new FormData()
+
+  formData.append('walletId', payload.walletId)
+  formData.append('categoryId', payload.categoryId ?? '')
+
+  if (payload.aiSuggestedCategoryId) {
+    formData.append('aiSuggestedCategoryId', payload.aiSuggestedCategoryId)
+  }
+
+  if (payload.toWalletId) {
+    formData.append('toWalletId', payload.toWalletId)
+  }
+
+  formData.append('amount', String(payload.amount))
+  formData.append('type', payload.type)
+  formData.append('transactionDate', payload.transactionDate)
+  formData.append('notes', payload.notes ?? '')
+  formData.append('isExcludedFromReport', String(payload.isExcludedFromReport ?? false))
+  formData.append('isEssential', String(payload.isEssential ?? false))
+
+  if (payload.receiptImageUri) {
+    formData.append('receiptImage', {
+      uri: payload.receiptImageUri,
+      name: getReceiptFilename(payload.receiptImageUri),
+      type: getReceiptMimeType(payload.receiptImageUri),
+    } as unknown as Blob)
+  } else {
+    formData.append('receiptImage', '')
+  }
+
+  return formData
+}
+
 export const createTransaction = async (payload: CreateTransactionDto, accessToken: string) => {
-  const response = await fetch(transactionsEndpoint, {
+  const startedAt = Date.now()
+  const formData = createTransactionFormData(payload)
+  const requestInit: RequestInit = {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
       ...buildAuthHeaders(accessToken),
     },
-    body: JSON.stringify(payload),
+    body: formData,
+  }
+
+  logBackendRequest('POST', transactionsEndpoint, { body: payload, headers: requestInit.headers })
+  const response = await fetchWithAuthRetry(transactionsEndpoint, requestInit)
+  console.log('[AddTransactionTiming] POST /transactions response', {
+    durationMs: Date.now() - startedAt,
+    status: response.status,
+    hasReceiptImage: Boolean(payload.receiptImageUri),
+  })
+  logBackendResponse('POST', transactionsEndpoint, response)
+
+  const transaction = (await readResponseBody(response)) as Transaction
+  console.log('[AddTransactionTiming] POST /transactions parsed', {
+    durationMs: Date.now() - startedAt,
   })
 
-  return (await readResponseBody(response)) as Transaction
+  return transaction
 }
 
 export const listTransactions = async (accessToken: string) => {
-  const response = await fetch(transactionsEndpoint, {
-    method: 'GET',
-    headers: buildAuthHeaders(accessToken),
-  })
+  const requestInit: RequestInit = { method: 'GET', headers: buildAuthHeaders(accessToken) }
+
+  logBackendRequest('GET', transactionsEndpoint, { headers: requestInit.headers })
+  const response = await fetchWithAuthRetry(transactionsEndpoint, requestInit)
+  logBackendResponse('GET', transactionsEndpoint, response)
 
   return (await readResponseBody(response)) as Transaction[]
 }
@@ -86,23 +166,30 @@ export const updateTransaction = async (
   payload: UpdateTransactionDto,
   accessToken: string,
 ) => {
-  const response = await fetch(`${transactionsEndpoint}/${id}`, {
+  const url = `${transactionsEndpoint}/${id}`
+  const requestInit: RequestInit = {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
       ...buildAuthHeaders(accessToken),
     },
     body: JSON.stringify(payload),
-  })
+  }
+
+  logBackendRequest('PATCH', url, { body: payload, headers: requestInit.headers })
+  const response = await fetchWithAuthRetry(url, requestInit)
+  logBackendResponse('PATCH', url, response)
 
   return (await readResponseBody(response)) as Transaction
 }
 
 export const deleteTransaction = async (id: string, accessToken: string) => {
-  const response = await fetch(`${transactionsEndpoint}/${id}`, {
-    method: 'DELETE',
-    headers: buildAuthHeaders(accessToken),
-  })
+  const url = `${transactionsEndpoint}/${id}`
+  const requestInit: RequestInit = { method: 'DELETE', headers: buildAuthHeaders(accessToken) }
+
+  logBackendRequest('DELETE', url, { headers: requestInit.headers })
+  const response = await fetchWithAuthRetry(url, requestInit)
+  logBackendResponse('DELETE', url, response)
 
   return (await readResponseBody(response)) as DeleteTransactionResponse
 }

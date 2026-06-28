@@ -31,7 +31,13 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Cho phep Hippimo dung camera de quet ma QR."
+          "cameraPermission": "Allow Hippimo to use the camera to scan receipts."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Hippimo to read receipt images for local OCR scanning."
         }
       ],
       [

@@ -1,8 +1,12 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
+import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 import {
+  ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -14,21 +18,24 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Typography } from '@/config/constants/theme'
+import { useAuth } from '@/features/auth/data/auth-context'
+import { createCategory } from '@/features/category/data/category-api'
 import { mapCategoriesToOptions, useCategories } from '@/features/category/data/use-categories'
+import type { CategoryType } from '@/features/category/domain/category.types'
 import type { TransactionItem } from '@/features/transaction/data/transaction-context'
-import { useWallets } from '@/features/wallet/data/wallet-context'
 import {
-  getCategoryColor,
-  getCategoryIcon,
   buildTransaction,
   defaultTransactionFormValues,
   formatCurrencyInput,
+  getCategoryColor,
+  getCategoryIcon,
   normalizeDate,
   normalizeTime,
   walletTypeToLabel,
   type CreateMode,
   type TransactionFormValues,
 } from '@/features/transaction/utils/transaction-form'
+import { useWallets } from '@/features/wallet/data/wallet-context'
 
 type SelectionOption = {
   value: string
@@ -41,24 +48,29 @@ type TransactionFormProps = {
   title: string
   submitLabel: string
   initialValues?: TransactionFormValues
+  initialReceiptImageUri?: string
   transactionId?: string
-  onSubmit: (transaction: TransactionItem) => void
+  onSubmit: (transaction: TransactionItem) => Promise<void> | void
 }
 
 export function TransactionForm({
   title,
   submitLabel,
   initialValues = defaultTransactionFormValues,
+  initialReceiptImageUri,
   transactionId,
   onSubmit,
 }: TransactionFormProps) {
   const insets = useSafeAreaInsets()
-  const { categories } = useCategories({ status: 'ACTIVE' })
+  const { authResponse } = useAuth()
+  const accessToken = authResponse?.tokens.accessToken
+  const { categories, refresh: refreshCategories } = useCategories({ status: 'ACTIVE' })
   const { wallets } = useWallets()
   const amountInputRef = useRef<TextInput>(null)
   const [mode, setMode] = useState<CreateMode>(initialValues.mode)
   const [amount, setAmount] = useState(initialValues.amount)
   const [amountFocused, setAmountFocused] = useState(false)
+  const [note, setNote] = useState(initialValues.note)
   const noteRef = useRef(initialValues.note)
   const lastExpenseCategoryRef = useRef(initialValues.expenseCategory)
   const [expenseWallet, setExpenseWallet] = useState(initialValues.expenseWallet)
@@ -70,6 +82,11 @@ export function TransactionForm({
   const [transferToWallet, setTransferToWallet] = useState(initialValues.transferToWallet)
   const [transactionTime, setTransactionTime] = useState(initialValues.transactionTime)
   const [transactionDate, setTransactionDate] = useState(initialValues.transactionDate)
+  const [receiptImageUri, setReceiptImageUri] = useState<string | null>(
+    initialReceiptImageUri ?? null,
+  )
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<
     | null
     | 'expenseWallet'
@@ -106,6 +123,52 @@ export function TransactionForm({
     [categoryOptions, expenseCategory],
   )
 
+  const suggestedNote = useMemo(() => {
+    const resolvedAmount = Number.parseInt(amount || '0', 10)
+    const formattedAmount = Number.isNaN(resolvedAmount)
+      ? null
+      : new Intl.NumberFormat('vi-VN').format(resolvedAmount)
+
+    if (mode === 'transfer') {
+      const fromWalletName = walletOptions.find(
+        (wallet) => wallet.value === transferFromWallet,
+      )?.label
+      const toWalletName = walletOptions.find((wallet) => wallet.value === transferToWallet)?.label
+
+      if (fromWalletName && toWalletName) {
+        return `Chuyển tiền từ ${fromWalletName} sang ${toWalletName}${formattedAmount ? `, số tiền ${formattedAmount} VND` : ''}.`
+      }
+
+      return 'Chuyển tiền giữa các ví.'
+    }
+
+    const walletName = walletOptions.find((wallet) => wallet.value === expenseWallet)?.label
+    const categoryName = selectedCategory?.label ?? expenseCategory
+
+    if (categoryName && walletName && formattedAmount) {
+      return `Chi ${formattedAmount} VND cho ${categoryName.toLowerCase()} bằng ví ${walletName}.`
+    }
+
+    if (categoryName && formattedAmount) {
+      return `Chi ${formattedAmount} VND cho ${categoryName.toLowerCase()}.`
+    }
+
+    if (categoryName) {
+      return `Chi tiêu cho ${categoryName.toLowerCase()}.`
+    }
+
+    return 'Gợi ý ghi chú sẽ hiện khi bạn chọn đủ thông tin giao dịch.'
+  }, [
+    amount,
+    expenseCategory,
+    expenseWallet,
+    mode,
+    selectedCategory?.label,
+    transferFromWallet,
+    transferToWallet,
+    walletOptions,
+  ])
+
   useEffect(() => {
     if (mode === 'expense' && categoryOptions.length) {
       const hasCategory = categoryOptions.some((option) => option.value === expenseCategory)
@@ -118,6 +181,7 @@ export function TransactionForm({
   useEffect(() => {
     setMode(initialValues.mode)
     setAmount(initialValues.amount)
+    setNote(initialValues.note)
     noteRef.current = initialValues.note
     setExpenseWallet(initialValues.expenseWallet)
     setExpenseWalletType((initialValues as any)?.expenseWalletType || 'Tiền mặt')
@@ -131,6 +195,10 @@ export function TransactionForm({
     setTransactionTime(initialValues.transactionTime)
     setTransactionDate(initialValues.transactionDate)
   }, [initialValues])
+
+  useEffect(() => {
+    setReceiptImageUri(initialReceiptImageUri ?? null)
+  }, [initialReceiptImageUri])
 
   useEffect(() => {
     if (mode === 'transfer') {
@@ -196,7 +264,44 @@ export function TransactionForm({
     setAmount(String(nextAmount))
   }
 
-  const handleSave = () => {
+  const pickReceiptImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 1,
+    })
+
+    const asset = result.canceled ? null : result.assets[0]
+
+    if (!asset?.uri) {
+      return
+    }
+
+    const maxDimension = Math.max(asset.width ?? 0, asset.height ?? 0)
+    const fileSize = asset.fileSize ?? 0
+    const shouldOptimize = fileSize > 4 * 1024 * 1024 || maxDimension > 2200
+
+    if (!shouldOptimize) {
+      setReceiptImageUri(asset.uri)
+      return
+    }
+
+    const optimizedImage = await manipulateAsync(
+      asset.uri,
+      maxDimension > 2200 ? [{ resize: { width: 1800 } }] : [],
+      {
+        compress: 0.82,
+        format: SaveFormat.JPEG,
+      },
+    )
+
+    setReceiptImageUri(optimizedImage.uri)
+  }
+
+  const handleSave = async () => {
+    if (isSubmitting) {
+      return
+    }
+
     const numericAmount = Number.parseInt(amount || '0', 10)
 
     if (!numericAmount) {
@@ -244,16 +349,56 @@ export function TransactionForm({
       categoryColor: selectedCategory?.color ?? getCategoryColor(expenseCategory),
       transferFromWallet,
       transferToWallet,
+      receiptImageUri,
       wallets,
     })
 
-    onSubmit(transaction)
+    try {
+      setIsSubmitting(true)
+      await onSubmit(transaction)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleCreateCategory = async (name: string, type: CategoryType) => {
+    if (!accessToken) {
+      Alert.alert('Chưa đăng nhập', 'Bạn cần đăng nhập để lưu danh mục.')
+      return
+    }
+
+    const trimmedName = name.trim()
+
+    if (!trimmedName) {
+      Alert.alert('Thiếu tên danh mục', 'Bạn hãy nhập tên danh mục trước khi lưu.')
+      return
+    }
+
+    await createCategory(
+      {
+        name: trimmedName,
+        type,
+        icon: getCategoryIcon(trimmedName),
+        color: getCategoryColor(trimmedName),
+      },
+      accessToken,
+    )
+
+    await refreshCategories()
+    setExpenseCategory(trimmedName)
+    setIsCategoryFormOpen(false)
   }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 10, 24) }]}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: Math.max(insets.top + 10, 24),
+            paddingBottom: Math.max(insets.bottom + 34, 34),
+          },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
@@ -385,9 +530,14 @@ export function TransactionForm({
         </View>
 
         <View style={styles.card}>
+          <Text style={styles.cardEyebrow}>Time</Text>
           <Text style={styles.sectionTitle}>THỜI GIAN GIAO DỊCH</Text>
-          <View style={styles.dateTimeColumn}>
-            <View style={styles.timePill}>
+          <View style={styles.dateTimeRow}>
+            <View style={[styles.dateTimeField, styles.timeField]}>
+              <View style={styles.dateTimeLabelRow}>
+                <Ionicons name='time-outline' size={16} color='#E9F8E2' />
+                <Text style={styles.dateTimeLabel}>Giờ</Text>
+              </View>
               <TextInput
                 value={transactionTime}
                 onChangeText={setTransactionTime}
@@ -398,7 +548,11 @@ export function TransactionForm({
                 style={styles.timeInput}
               />
             </View>
-            <View style={styles.datePill}>
+            <View style={[styles.dateTimeField, styles.dateField]}>
+              <View style={styles.dateTimeLabelRow}>
+                <Ionicons name='calendar-outline' size={16} color='#E9F8E2' />
+                <Text style={styles.dateTimeLabel}>Ngày</Text>
+              </View>
               <TextInput
                 value={transactionDate}
                 onChangeText={setTransactionDate}
@@ -414,8 +568,9 @@ export function TransactionForm({
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>GHI CHÚ</Text>
           <TextInput
-            defaultValue={initialValues.note}
+            value={note}
             onChangeText={(text) => {
+              setNote(text)
               noteRef.current = text
             }}
             placeholder='Nhập ghi chú cho giao dịch'
@@ -426,14 +581,64 @@ export function TransactionForm({
             autoCorrect={false}
             spellCheck={false}
           />
+          <Pressable
+            style={styles.noteSuggestionChip}
+            onPress={() => {
+              setNote(suggestedNote)
+              noteRef.current = suggestedNote
+            }}
+          >
+            <Ionicons name='sparkles-outline' size={16} color='#12392C' />
+            <Text style={styles.noteSuggestionText}>{suggestedNote}</Text>
+          </Pressable>
           <View style={styles.noteHintRow}>
             <MaterialCommunityIcons name='emoticon-excited-outline' size={18} color='#12392C' />
-            <Text style={styles.noteHint}>Có vẻ bạn đang chi cho ăn uống ?</Text>
+            <Text style={styles.noteHint}>Chạm gợi ý để dùng nhanh làm ghi chú.</Text>
           </View>
         </View>
 
-        <Pressable style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>{submitLabel}</Text>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>TẢI ẢNH HÓA ĐƠN</Text>
+          {receiptImageUri ? (
+            <View style={styles.receiptPreviewCard}>
+              <Image source={{ uri: receiptImageUri }} style={styles.receiptPreviewImage} />
+              <View style={styles.receiptPreviewActions}>
+                <Pressable style={styles.receiptSecondaryButton} onPress={pickReceiptImage}>
+                  <Ionicons name='image-outline' size={16} color='#12392C' />
+                  <Text style={styles.receiptSecondaryButtonText}>Replace</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.receiptDangerButton}
+                  onPress={() => setReceiptImageUri(null)}
+                >
+                  <Ionicons name='trash-outline' size={16} color='#B3261E' />
+                  <Text style={styles.receiptDangerButtonText}>Remove</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <Pressable style={styles.receiptUploadButton} onPress={pickReceiptImage}>
+              <View style={styles.receiptUploadIconWrap}>
+                <Ionicons name='cloud-upload-outline' size={22} color='#12392C' />
+              </View>
+              <View style={styles.receiptUploadBody}>
+                <Text style={styles.receiptUploadTitle}>Chọn ảnh từ thiết bị</Text>
+                <Text style={styles.receiptUploadText}>PNG, JPG, hoặc ảnh từ thư viện</Text>
+              </View>
+              <Ionicons name='chevron-forward' size={18} color='#12392C' />
+            </Pressable>
+          )}
+        </View>
+
+        <Pressable
+          style={[styles.saveButton, isSubmitting && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={isSubmitting}
+        >
+          <View style={styles.saveButtonContent}>
+            {isSubmitting ? <ActivityIndicator size='small' color='#FFFFFF' /> : null}
+            <Text style={styles.saveButtonText}>{isSubmitting ? 'ĐANG LƯU...' : submitLabel}</Text>
+          </View>
         </Pressable>
       </ScrollView>
 
@@ -462,10 +667,20 @@ export function TransactionForm({
         title='Chọn danh mục'
         options={categoryOptions}
         onClose={() => setOpenDropdown(null)}
+        actionLabel='Tạo danh mục mới'
+        onActionPress={() => {
+          setOpenDropdown(null)
+          setIsCategoryFormOpen(true)
+        }}
         onSelect={(value) => {
           setExpenseCategory(value)
           setOpenDropdown(null)
         }}
+      />
+      <CreateCategoryModal
+        visible={isCategoryFormOpen}
+        onClose={() => setIsCategoryFormOpen(false)}
+        onSubmit={handleCreateCategory}
       />
       <SelectionModal
         visible={openDropdown === 'transferFromWallet'}
@@ -547,16 +762,20 @@ function SelectorBlock({
 }
 
 function SelectionModal({
+  actionLabel,
   visible,
   title,
   options,
   onClose,
+  onActionPress,
   onSelect,
 }: {
+  actionLabel?: string
   visible: boolean
   title: string
   options: SelectionOption[]
   onClose: () => void
+  onActionPress?: () => void
   onSelect: (value: string) => void
 }) {
   return (
@@ -564,31 +783,132 @@ function SelectionModal({
       <Pressable style={styles.modalBackdrop} onPress={onClose}>
         <Pressable style={styles.modalCard} onPress={() => {}}>
           <Text style={styles.modalTitle}>{title}</Text>
-          {options.map((option) => (
-            <Pressable
-              key={option.value}
-              style={styles.modalOption}
-              onPress={() => onSelect(option.value)}
-            >
-              <View style={styles.modalOptionContent}>
-                {option.icon || option.color ? (
-                  <View
-                    style={[styles.modalOptionIcon, { backgroundColor: option.color ?? '#12392C' }]}
-                  >
-                    {option.icon ? (
-                      <MaterialCommunityIcons
-                        name={option.icon as ComponentProps<typeof MaterialCommunityIcons>['name']}
-                        size={16}
-                        color='#FFFFFF'
-                      />
-                    ) : null}
-                  </View>
-                ) : null}
-                <Text style={styles.modalOptionText}>{option.label}</Text>
-              </View>
-              <Ionicons name='chevron-forward' size={16} color='#12392C' />
+          {actionLabel && onActionPress ? (
+            <Pressable style={styles.modalActionButton} onPress={onActionPress}>
+              <Ionicons name='add-circle-outline' size={18} color='#FFFFFF' />
+              <Text style={styles.modalActionButtonText}>{actionLabel}</Text>
             </Pressable>
-          ))}
+          ) : null}
+          <ScrollView style={styles.modalOptionsScroll} showsVerticalScrollIndicator={false}>
+            {options.map((option) => (
+              <Pressable
+                key={option.value}
+                style={styles.modalOption}
+                onPress={() => onSelect(option.value)}
+              >
+                <View style={styles.modalOptionContent}>
+                  {option.icon || option.color ? (
+                    <View
+                      style={[
+                        styles.modalOptionIcon,
+                        { backgroundColor: option.color ?? '#12392C' },
+                      ]}
+                    >
+                      {option.icon ? (
+                        <MaterialCommunityIcons
+                          name={
+                            option.icon as ComponentProps<typeof MaterialCommunityIcons>['name']
+                          }
+                          size={16}
+                          color='#FFFFFF'
+                        />
+                      ) : null}
+                    </View>
+                  ) : null}
+                  <Text style={styles.modalOptionText}>{option.label}</Text>
+                </View>
+                <Ionicons name='chevron-forward' size={16} color='#12392C' />
+              </Pressable>
+            ))}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  )
+}
+
+function CreateCategoryModal({
+  visible,
+  onClose,
+  onSubmit,
+}: {
+  visible: boolean
+  onClose: () => void
+  onSubmit: (name: string, type: CategoryType) => Promise<void>
+}) {
+  const [name, setName] = useState('')
+  const [type, setType] = useState<CategoryType>('EXPENSE')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (visible) {
+      setName('')
+      setType('EXPENSE')
+    }
+  }, [visible])
+
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true)
+      await onSubmit(name, type)
+    } catch (error) {
+      Alert.alert(
+        'Không lưu được danh mục',
+        error instanceof Error ? error.message : 'Vui lòng thử lại.',
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType='fade' onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable style={styles.categoryModalCard} onPress={() => {}}>
+          <Text style={styles.modalTitle}>Tạo danh mục</Text>
+
+          <Text style={styles.categoryModalLabel}>Tên danh mục</Text>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder='Nhập tên danh mục'
+            placeholderTextColor='#245442'
+            style={styles.categoryModalInput}
+          />
+
+          <Text style={styles.categoryModalLabel}>Loại danh mục</Text>
+          <View style={styles.categoryTypeRow}>
+            {(['EXPENSE', 'INCOME'] as CategoryType[]).map((item) => (
+              <Pressable
+                key={item}
+                style={[
+                  styles.categoryTypeButton,
+                  type === item && styles.categoryTypeButtonActive,
+                ]}
+                onPress={() => setType(item)}
+              >
+                <Text
+                  style={[
+                    styles.categoryTypeButtonText,
+                    type === item && styles.categoryTypeButtonTextActive,
+                  ]}
+                >
+                  {item === 'EXPENSE' ? 'Chi tiêu' : 'Thu nhập'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Pressable
+            disabled={isSubmitting}
+            style={[styles.categorySaveButton, isSubmitting && styles.saveButtonDisabled]}
+            onPress={handleSubmit}
+          >
+            {isSubmitting ? <ActivityIndicator size='small' color='#FFFFFF' /> : null}
+            <Text style={styles.categorySaveButtonText}>
+              {isSubmitting ? 'ĐANG LƯU...' : 'LƯU'}
+            </Text>
+          </Pressable>
         </Pressable>
       </Pressable>
     </Modal>
@@ -632,6 +952,14 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 14,
   },
+  cardEyebrow: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: '#E9F8E2',
+    marginBottom: 6,
+  },
   amountCard: {
     paddingVertical: 18,
   },
@@ -641,9 +969,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   amountButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#12392C',
     alignItems: 'center',
     justifyContent: 'center',
@@ -702,8 +1030,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
     color: '#F6FFF9',
+    marginBottom: 8,
+    textAlign: 'left',
+  },
+  sectionDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#E9F8E2',
     marginBottom: 12,
-    textAlign: 'center',
   },
   choiceGrid: {
     flexDirection: 'row',
@@ -746,49 +1080,82 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  timePill: {
-    alignSelf: 'center',
-    backgroundColor: '#12392C',
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+  dateTimeRow: {
+    flexDirection: 'row',
+    gap: 12,
   },
-  datePill: {
-    alignSelf: 'center',
+  dateTimeField: {
+    flex: 1,
     backgroundColor: '#12392C',
-    borderRadius: 999,
+    borderRadius: 18,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
+  },
+  timeField: {
+    flex: 0.9,
+  },
+  dateField: {
+    flex: 1.3,
+  },
+  dateTimeLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  dateTimeLabel: {
+    color: '#E9F8E2',
+    fontSize: 12,
+    fontWeight: '800',
   },
   dateInput: {
-    width: 148,
+    width: '100%',
     fontSize: 22,
     fontWeight: '900',
     color: '#FFFFFF',
-    textAlign: 'center',
+    textAlign: 'left',
     paddingVertical: 0,
   },
   timeInput: {
-    width: 86,
+    width: '100%',
     fontSize: 22,
     fontWeight: '900',
     color: '#FFFFFF',
-    textAlign: 'center',
+    textAlign: 'left',
     paddingVertical: 0,
   },
   noteInput: {
     backgroundColor: '#DDF2D2',
-    borderRadius: 999,
+    borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 12,
+    minHeight: 96,
     fontSize: 14,
     color: '#12392C',
+    textAlignVertical: 'top',
   },
   noteHintRow: {
     marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  noteSuggestionChip: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderRadius: 14,
+    backgroundColor: '#F7FBF5',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  noteSuggestionText: {
+    flex: 1,
+    color: '#12392C',
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 17,
   },
   noteHint: {
     fontSize: 12,
@@ -802,6 +1169,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 14,
     marginTop: 12,
+  },
+  saveButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  saveButtonDisabled: {
+    opacity: 0.55,
   },
   saveButtonText: {
     color: '#FFFFFF',
@@ -818,9 +1194,13 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: '100%',
+    maxHeight: '80%',
     backgroundColor: '#F7FBF5',
     borderRadius: 18,
     padding: 16,
+  },
+  modalOptionsScroll: {
+    maxHeight: 360,
   },
   modalTitle: {
     fontSize: 18,
@@ -856,6 +1236,81 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: '#12392C',
+  },
+  modalActionButton: {
+    minHeight: 44,
+    borderRadius: 12,
+    backgroundColor: '#12392C',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  modalActionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  categoryModalCard: {
+    width: '100%',
+    backgroundColor: '#F7FBF5',
+    borderRadius: 18,
+    padding: 16,
+  },
+  categoryModalLabel: {
+    color: '#245442',
+    fontSize: 13,
+    fontWeight: '900',
+    marginBottom: 8,
+  },
+  categoryModalInput: {
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    color: '#0B1D17',
+    fontSize: 15,
+    fontWeight: '800',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    marginBottom: 16,
+  },
+  categoryTypeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 18,
+  },
+  categoryTypeButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 999,
+    backgroundColor: '#CFECC2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryTypeButtonActive: {
+    backgroundColor: '#12392C',
+  },
+  categoryTypeButtonText: {
+    color: '#12392C',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  categoryTypeButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  categorySaveButton: {
+    minHeight: 48,
+    borderRadius: 999,
+    backgroundColor: '#79C77C',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  categorySaveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
   },
   input: {
     backgroundColor: '#12392C',
@@ -894,5 +1349,81 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     width: 44,
     height: 44,
+  },
+  receiptUploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+    backgroundColor: '#DDF2D2',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  receiptUploadIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F7FBF5',
+  },
+  receiptUploadBody: {
+    flex: 1,
+  },
+  receiptUploadTitle: {
+    color: '#12392C',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  receiptUploadText: {
+    marginTop: 2,
+    color: '#315245',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  receiptPreviewCard: {
+    overflow: 'hidden',
+    borderRadius: 16,
+    backgroundColor: '#DDF2D2',
+  },
+  receiptPreviewImage: {
+    width: '100%',
+    height: 210,
+    backgroundColor: '#CFECC2',
+  },
+  receiptPreviewActions: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+  },
+  receiptSecondaryButton: {
+    flex: 1,
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: '#F7FBF5',
+  },
+  receiptSecondaryButtonText: {
+    color: '#12392C',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  receiptDangerButton: {
+    flex: 1,
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: '#FFE3DE',
+  },
+  receiptDangerButtonText: {
+    color: '#B3261E',
+    fontSize: 13,
+    fontWeight: '900',
   },
 })

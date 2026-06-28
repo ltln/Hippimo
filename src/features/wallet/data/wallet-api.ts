@@ -4,6 +4,8 @@ import type {
   UpdateWalletDto,
   Wallet,
 } from '@/features/wallet/domain/wallet.types'
+import { fetchWithAuthRetry } from '@/features/auth/data/authenticated-fetch'
+import { logBackendRequest, logBackendResponse } from '@/shared/utils/http-debug'
 
 export const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.example.com'
 
@@ -60,45 +62,57 @@ const buildAuthHeaders = (accessToken: string) => ({
 })
 
 export const createWallet = async (payload: CreateWalletDto, accessToken: string) => {
-  const response = await fetch(walletsEndpoint, {
+  const requestInit: RequestInit = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...buildAuthHeaders(accessToken),
     },
     body: JSON.stringify(payload),
-  })
+  }
+
+  logBackendRequest('POST', walletsEndpoint, { body: payload, headers: requestInit.headers })
+  const response = await fetchWithAuthRetry(walletsEndpoint, requestInit)
+  logBackendResponse('POST', walletsEndpoint, response)
 
   return (await readResponseBody(response)) as Wallet
 }
 
 export const listWallets = async (accessToken: string) => {
-  const response = await fetch(walletsEndpoint, {
-    method: 'GET',
-    headers: buildAuthHeaders(accessToken),
-  })
+  const requestInit: RequestInit = { method: 'GET', headers: buildAuthHeaders(accessToken) }
+
+  logBackendRequest('GET', walletsEndpoint, { headers: requestInit.headers })
+  const response = await fetchWithAuthRetry(walletsEndpoint, requestInit)
+  logBackendResponse('GET', walletsEndpoint, response)
 
   return (await readResponseBody(response)) as Wallet[]
 }
 
 export const updateWallet = async (id: string, payload: UpdateWalletDto, accessToken: string) => {
-  const response = await fetch(`${walletsEndpoint}/${id}`, {
+  const url = `${walletsEndpoint}/${id}`
+  const requestInit: RequestInit = {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
       ...buildAuthHeaders(accessToken),
     },
     body: JSON.stringify(payload),
-  })
+  }
+
+  logBackendRequest('PATCH', url, { body: payload, headers: requestInit.headers })
+  const response = await fetchWithAuthRetry(url, requestInit)
+  logBackendResponse('PATCH', url, response)
 
   return (await readResponseBody(response)) as Wallet
 }
 
 export const deleteWallet = async (id: string, accessToken: string) => {
-  const response = await fetch(`${walletsEndpoint}/${id}`, {
-    method: 'DELETE',
-    headers: buildAuthHeaders(accessToken),
-  })
+  const url = `${walletsEndpoint}/${id}`
+  const requestInit: RequestInit = { method: 'DELETE', headers: buildAuthHeaders(accessToken) }
+
+  logBackendRequest('DELETE', url, { headers: requestInit.headers })
+  const response = await fetchWithAuthRetry(url, requestInit)
+  logBackendResponse('DELETE', url, response)
 
   return (await readResponseBody(response)) as DeleteWalletResponse
 }

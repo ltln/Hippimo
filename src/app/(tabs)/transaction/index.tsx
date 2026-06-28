@@ -165,6 +165,10 @@ export default function TransactionScreen() {
               })}
             </ScrollView>
 
+            {filteredTransactions.length === 0 ? (
+              <Text style={styles.emptyText}>Không có giao dịch gần đây</Text>
+            ) : null}
+
             {filteredTransactions.map((item) => (
               <DetailCard
                 key={item.id}

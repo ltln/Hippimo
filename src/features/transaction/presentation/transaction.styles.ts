@@ -224,6 +224,15 @@ export const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
   },
+  emptyText: {
+    color: '#245442',
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 22,
+    textAlign: 'center',
+  },
   controlCard: {
     backgroundColor: '#CFECC2',
     borderRadius: 16,

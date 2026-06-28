@@ -4,6 +4,14 @@ import type {
   DeleteBudgetResponse,
   UpdateBudgetDto,
 } from '@/features/budget/domain/budget.types'
+import { fetchWithAuthRetry } from '@/features/auth/data/authenticated-fetch'
+import { logBackendRequest, logBackendResponse } from '@/shared/utils/http-debug'
+
+const isAbortError = (error: unknown) =>
+  typeof error === 'object' &&
+  error !== null &&
+  'name' in error &&
+  (error as { name?: unknown }).name === 'AbortError'
 
 export const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.example.com'
 
@@ -29,14 +37,25 @@ const fetchWithTimeout = async (
 ) => {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  const method = init.method ?? 'GET'
+  const url = typeof input === 'string' ? input : input.toString()
+  const parsedBody = typeof init.body === 'string' ? JSON.parse(init.body) : init.body
+
+  logBackendRequest(method, url, {
+    body: parsedBody,
+    headers: init.headers,
+  })
 
   try {
-    return await fetch(input, {
+    const response = await fetchWithAuthRetry(input, {
       ...init,
       signal: controller.signal,
     })
+
+    logBackendResponse(method, url, response)
+    return response
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
+    if (isAbortError(error)) {
       throw new BudgetApiError('Request timeout. Please try again.', 408)
     }
     throw error

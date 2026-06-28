@@ -19,6 +19,7 @@ export type Transaction = {
 export type CreateTransactionDto = {
   walletId: string
   categoryId?: string
+  aiSuggestedCategoryId?: string
   toWalletId?: string
   amount: number
   type: ApiTransactionType
@@ -26,6 +27,7 @@ export type CreateTransactionDto = {
   notes?: string
   isExcludedFromReport?: boolean
   isEssential?: boolean
+  receiptImageUri?: string
 }
 
 export type UpdateTransactionDto = Partial<CreateTransactionDto>

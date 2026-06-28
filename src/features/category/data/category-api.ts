@@ -4,6 +4,8 @@ import type {
   DeleteCategoryResponse,
   UpdateCategoryDto,
 } from '@/features/category/domain/category.types'
+import { fetchWithAuthRetry } from '@/features/auth/data/authenticated-fetch'
+import { logBackendRequest, logBackendResponse } from '@/shared/utils/http-debug'
 
 export const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.example.com'
 
@@ -60,32 +62,39 @@ const buildAuthHeaders = (accessToken: string) => ({
 })
 
 export const createCategory = async (payload: CreateCategoryDto, accessToken: string) => {
-  const response = await fetch(categoriesEndpoint, {
+  const requestInit: RequestInit = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...buildAuthHeaders(accessToken),
     },
     body: JSON.stringify(payload),
-  })
+  }
+
+  logBackendRequest('POST', categoriesEndpoint, { body: payload, headers: requestInit.headers })
+  const response = await fetchWithAuthRetry(categoriesEndpoint, requestInit)
+  logBackendResponse('POST', categoriesEndpoint, response)
 
   return (await readResponseBody(response)) as Category
 }
 
 export const listCategories = async (accessToken: string) => {
-  const response = await fetch(categoriesEndpoint, {
-    method: 'GET',
-    headers: buildAuthHeaders(accessToken),
-  })
+  const requestInit: RequestInit = { method: 'GET', headers: buildAuthHeaders(accessToken) }
+
+  logBackendRequest('GET', categoriesEndpoint, { headers: requestInit.headers })
+  const response = await fetchWithAuthRetry(categoriesEndpoint, requestInit)
+  logBackendResponse('GET', categoriesEndpoint, response)
 
   return (await readResponseBody(response)) as Category[]
 }
 
 export const getCategoryById = async (id: string, accessToken: string) => {
-  const response = await fetch(`${categoriesEndpoint}/${id}`, {
-    method: 'GET',
-    headers: buildAuthHeaders(accessToken),
-  })
+  const url = `${categoriesEndpoint}/${id}`
+  const requestInit: RequestInit = { method: 'GET', headers: buildAuthHeaders(accessToken) }
+
+  logBackendRequest('GET', url, { headers: requestInit.headers })
+  const response = await fetchWithAuthRetry(url, requestInit)
+  logBackendResponse('GET', url, response)
 
   return (await readResponseBody(response)) as Category
 }
@@ -95,23 +104,30 @@ export const updateCategory = async (
   payload: UpdateCategoryDto,
   accessToken: string,
 ) => {
-  const response = await fetch(`${categoriesEndpoint}/${id}`, {
+  const url = `${categoriesEndpoint}/${id}`
+  const requestInit: RequestInit = {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
       ...buildAuthHeaders(accessToken),
     },
     body: JSON.stringify(payload),
-  })
+  }
+
+  logBackendRequest('PATCH', url, { body: payload, headers: requestInit.headers })
+  const response = await fetchWithAuthRetry(url, requestInit)
+  logBackendResponse('PATCH', url, response)
 
   return (await readResponseBody(response)) as Category
 }
 
 export const deleteCategory = async (id: string, accessToken: string) => {
-  const response = await fetch(`${categoriesEndpoint}/${id}`, {
-    method: 'DELETE',
-    headers: buildAuthHeaders(accessToken),
-  })
+  const url = `${categoriesEndpoint}/${id}`
+  const requestInit: RequestInit = { method: 'DELETE', headers: buildAuthHeaders(accessToken) }
+
+  logBackendRequest('DELETE', url, { headers: requestInit.headers })
+  const response = await fetchWithAuthRetry(url, requestInit)
+  logBackendResponse('DELETE', url, response)
 
   return (await readResponseBody(response)) as DeleteCategoryResponse
 }
