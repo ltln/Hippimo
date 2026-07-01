@@ -5,9 +5,8 @@ import type {
   Wallet,
 } from '@/features/wallet/domain/wallet.types'
 import { fetchWithAuthRetry } from '@/features/auth/data/authenticated-fetch'
+import { apiBaseUrl } from '@/infrastructure/api/api-base-url'
 import { logBackendRequest, logBackendResponse } from '@/shared/utils/http-debug'
-
-export const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.example.com'
 
 const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, '')
 

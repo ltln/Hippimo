@@ -8,12 +8,12 @@ import type {
 } from '@/features/auth/domain/google-auth.types'
 import { getAuthTokens } from '@/features/auth/utils/auth-tokens'
 import { formatValue } from '@/features/auth/utils/format-value'
+import { apiBaseUrl } from '@/infrastructure/api/api-base-url'
 import { logBackendRequest, logBackendResponse } from '@/shared/utils/http-debug'
 
 export const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
 export const googleAndroidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
 export const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
-export const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.example.com'
 
 const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, '')
 

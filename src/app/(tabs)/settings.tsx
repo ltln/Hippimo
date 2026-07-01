@@ -10,7 +10,7 @@ const settingItems = [
   {
     label: 'Thông tin tài khoản',
     icon: 'card-account-details-outline',
-    action: () => router.push('/account-info'),
+    action: () => router.push('/settings/profile'),
   },
   {
     label: 'Cài đặt thông báo',

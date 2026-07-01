@@ -61,6 +61,7 @@ export default function RootLayout() {
                         options={{ headerShown: false, animationDuration: 100 }}
                       />
                       <Stack.Screen name='account-info' options={{ headerShown: false }} />
+                      <Stack.Screen name='settings/profile' options={{ headerShown: false }} />
                       <Stack.Screen name='oauthredirect' options={{ headerShown: false }} />
                       <Stack.Screen
                         name='modal'

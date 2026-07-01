@@ -1,23 +1,25 @@
-import type { ComponentProps } from 'react'
-import { useMemo } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
+import type { ComponentProps } from 'react'
+import { useMemo } from 'react'
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Typography } from '@/config/constants/theme'
-import { useTransactions } from '@/features/transaction/data/transaction-context'
+import {
+  useTransactions,
+  type TransactionItem,
+} from '@/features/transaction/data/transaction-context'
 import {
   formatVnd,
   getWalletTypeMeta,
-  type WalletItem,
   useWallets,
+  type WalletItem,
 } from '@/features/wallet/data/wallet-context'
 import { useBudgets } from '@/shared/contexts/budget-context'
 
 type MaterialIconName = ComponentProps<typeof MaterialCommunityIcons>['name']
 
-const chartBars = [64, 94, 42, 118, 74, 98, 56]
 const weekDays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
 
 export default function DashboardScreen() {
@@ -26,12 +28,9 @@ export default function DashboardScreen() {
   const { transactions } = useTransactions()
   const { budgets } = useBudgets()
 
-  const totalBalance = useMemo(
-    () => wallets.reduce((total, wallet) => total + wallet.balance, 0),
-    [wallets],
-  )
   const recentTransactions = transactions.slice(0, 4)
   const visibleWallets = wallets.slice(0, 4)
+  const expenseOverview = useMemo(() => getExpenseOverview(transactions), [transactions])
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
@@ -54,7 +53,7 @@ export default function DashboardScreen() {
             style={styles.headerIconButton}
             accessibilityLabel='Chat AI'
             hitSlop={8}
-            onPress={() => router.push('/(tabs)/chat_ai')}
+            onPress={() => Alert.alert('Đang phát triển', 'Tính năng này sẽ sớm được cập nhật.')}
           >
             <Ionicons name='sparkles-outline' size={22} color='#12392C' />
           </Pressable>
@@ -78,20 +77,15 @@ export default function DashboardScreen() {
 
         <View style={styles.chartCard}>
           <View>
-            <Text style={styles.chartMonth}>Tháng 07 / 2026</Text>
-            <Text style={styles.chartAmount}>{formatVnd(totalBalance || 3000000)}</Text>
+            <Text style={styles.chartMonth}>{expenseOverview.periodLabel}</Text>
+            <Text style={styles.chartAmount}>{formatVnd(expenseOverview.monthTotal || 0)}</Text>
           </View>
 
           <View style={styles.chartArea}>
-            {chartBars.map((height, index) => (
+            {expenseOverview.days.map((day, index) => (
               <View key={weekDays[index]} style={styles.barColumn}>
-                <View style={[styles.bar, { height }]}>
-                  <View
-                    style={[
-                      styles.barSegment,
-                      index % 2 === 0 ? styles.barSegmentFood : styles.barSegmentShop,
-                    ]}
-                  />
+                <View style={[styles.bar, { height: day.height }]}>
+                  <View style={[styles.barSegment, { backgroundColor: day.color }]} />
                 </View>
                 <Text style={styles.dayLabel}>{weekDays[index]}</Text>
               </View>
@@ -99,8 +93,9 @@ export default function DashboardScreen() {
           </View>
 
           <View style={styles.legendRow}>
-            <LegendPill color='#11382B' label='Ăn uống' />
-            <LegendPill color='#E9695F' label='Mua sắm' />
+            {expenseOverview.legend.map((item) => (
+              <LegendPill key={item.label} color={item.color} label={item.label} />
+            ))}
           </View>
         </View>
 
@@ -176,28 +171,69 @@ export default function DashboardScreen() {
               </View>
             </View>
           ) : null}
-
-          {recentTransactions.length === 0 ? (
-            <EmptyMessage text='Không có giao dịch gần đây' />
-          ) : null}
-
-          {recentTransactions.length > 0 ? (
-            <View style={styles.insightRow}>
-              <View style={styles.aiIconBubble}>
-                <Ionicons name='sparkles-outline' size={22} color='#0E372B' />
-              </View>
-              <View style={styles.insightBody}>
-                <Text style={styles.insightTitle}>AI gợi ý</Text>
-                <Text style={styles.insightText}>
-                  Chi tiêu ăn uống đang ổn định. Bạn có thể giữ thêm 300.000 VND cho cuối tuần.
-                </Text>
-              </View>
-            </View>
-          ) : null}
         </View>
       </ScrollView>
     </SafeAreaView>
   )
+}
+
+function getExpenseOverview(transactions: TransactionItem[]) {
+  const now = new Date()
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const day = startOfWeek.getDay()
+  const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1)
+  startOfWeek.setDate(diff)
+  startOfWeek.setHours(0, 0, 0, 0)
+
+  const endOfWeek = new Date(startOfWeek)
+  endOfWeek.setDate(startOfWeek.getDate() + 6)
+  endOfWeek.setHours(23, 59, 59, 999)
+
+  const monthExpenses = transactions.filter(
+    (item) => item.type === 'expense' && item.dateISO.startsWith(currentMonthKey),
+  )
+  const weekExpenses = transactions.filter((item) => {
+    if (item.type !== 'expense') return false
+    const transactionDate = new Date(item.dateISO)
+    return transactionDate >= startOfWeek && transactionDate <= endOfWeek
+  })
+
+  const dailyTotals = weekDays.map((_, index) => {
+    const date = new Date(startOfWeek)
+    date.setDate(startOfWeek.getDate() + index)
+    const key = date.toISOString().slice(0, 10)
+
+    return weekExpenses
+      .filter((item) => item.dateISO === key)
+      .reduce((sum, item) => sum + Math.abs(item.amountValue), 0)
+  })
+  const maxDailyTotal = Math.max(...dailyTotals, 1)
+  const categoryTotals = monthExpenses.reduce<Map<string, { total: number; color: string }>>(
+    (map, item) => {
+      const current = map.get(item.title)
+      map.set(item.title, {
+        total: (current?.total ?? 0) + Math.abs(item.amountValue),
+        color: current?.color ?? item.iconBackground,
+      })
+      return map
+    },
+    new Map(),
+  )
+  const legend = Array.from(categoryTotals.entries())
+    .map(([label, value]) => ({ label, ...value }))
+    .sort((left, right) => right.total - left.total)
+    .slice(0, 2)
+
+  return {
+    periodLabel: `Tháng ${String(now.getMonth() + 1).padStart(2, '0')} / ${now.getFullYear()}`,
+    monthTotal: monthExpenses.reduce((sum, item) => sum + Math.abs(item.amountValue), 0),
+    days: dailyTotals.map((total, index) => ({
+      height: total > 0 ? Math.max(18, Math.round((total / maxDailyTotal) * 118)) : 12,
+      color: legend[index % Math.max(legend.length, 1)]?.color ?? '#12392C',
+    })),
+    legend: legend.length > 0 ? legend : [{ label: 'Chi tiêu', color: '#12392C' }],
+  }
 }
 
 function EmptyMessage({ text }: { text: string }) {

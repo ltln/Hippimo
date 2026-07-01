@@ -5,9 +5,8 @@ import type {
   UpdateTransactionDto,
 } from '@/features/transaction/domain/transaction.types'
 import { fetchWithAuthRetry } from '@/features/auth/data/authenticated-fetch'
+import { apiBaseUrl } from '@/infrastructure/api/api-base-url'
 import { logBackendRequest, logBackendResponse } from '@/shared/utils/http-debug'
-
-export const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.example.com'
 
 const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, '')
 
@@ -93,7 +92,10 @@ const createTransactionFormData = (payload: CreateTransactionDto) => {
   const formData = new FormData()
 
   formData.append('walletId', payload.walletId)
-  formData.append('categoryId', payload.categoryId ?? '')
+
+  if (payload.type !== 'TRANSFER') {
+    formData.append('categoryId', payload.categoryId ?? '')
+  }
 
   if (payload.aiSuggestedCategoryId) {
     formData.append('aiSuggestedCategoryId', payload.aiSuggestedCategoryId)

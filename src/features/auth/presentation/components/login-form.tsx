@@ -1,8 +1,7 @@
-import { Feather, FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons'
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons'
 import { useState } from 'react'
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -37,10 +36,6 @@ export function LoginForm({
 
   const handleEmailLogin = () => {
     onEmailLogin(email)
-  }
-
-  const handleAppleLogin = () => {
-    Alert.alert('Đăng nhập Apple', 'Apple Sign In chưa được cấu hình cho Android.')
   }
 
   return (
@@ -109,15 +104,6 @@ export function LoginForm({
               <MaterialCommunityIcons name='google' size={28} color='#4285F4' />
             )}
             <Text style={styles.socialButtonText}>Đăng nhập với Google</Text>
-          </Pressable>
-
-          <Pressable
-            accessibilityRole='button'
-            onPress={handleAppleLogin}
-            style={({ pressed }) => [styles.socialButton, pressed && styles.pressed]}
-          >
-            <FontAwesome name='apple' size={30} color={colors.dark} />
-            <Text style={styles.socialButtonText}>Đăng nhập với Apple</Text>
           </Pressable>
 
           {message ? (

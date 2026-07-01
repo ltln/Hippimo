@@ -49,6 +49,9 @@ export const styles = StyleSheet.create({
   periodNavButton: {
     padding: 8,
   },
+  disabledNavButton: {
+    opacity: 0.45,
+  },
   periodLabel: {
     fontSize: 17,
     fontWeight: '900',
