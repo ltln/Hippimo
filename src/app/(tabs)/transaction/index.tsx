@@ -15,6 +15,7 @@ import {
   FilterChip,
   TransactionPageTabs,
   type TransactionPageTabKey,
+  StatisticsComponent,
 } from '@/features/transaction/presentation/transaction-components'
 import { styles } from '@/features/transaction/presentation/transaction.styles'
 import { normalizeDateQuery } from '@/features/transaction/utils/transaction-utils'
@@ -191,9 +192,7 @@ export default function TransactionScreen() {
             ))}
           </>
         ) : (
-          <View style={styles.statisticsContent}>
-            <Text style={styles.statisticsText}>Nội dung thống kê</Text>
-          </View>
+          <StatisticsComponent transactions={transactions} />
         )}
       </ScrollView>
     </SafeAreaView>

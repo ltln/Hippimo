@@ -1,10 +1,5 @@
 export type ApiWalletType =
-  | 'CASH'
-  | 'BANK_ACCOUNT'
-  | 'E_WALLET'
-  | 'CREDIT_CARD'
-  | 'SAVINGS'
-  | 'OTHER'
+  'CASH' | 'BANK_ACCOUNT' | 'E_WALLET' | 'CREDIT_CARD' | 'SAVINGS' | 'OTHER'
 
 export type Wallet = {
   walletId: string

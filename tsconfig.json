@@ -5,6 +5,7 @@
     "jsx": "react-native",
     "baseUrl": ".",
     "ignoreDeprecations": "5.0",
+    "esModuleInterop": true,
     "paths": {
       "@/*": ["src/*"]
     }
