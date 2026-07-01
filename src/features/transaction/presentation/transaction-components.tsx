@@ -83,6 +83,11 @@ export function StatisticsComponent({ transactions }: { transactions: Transactio
   const [activeType, setActiveType] = useState<'expense' | 'income'>('expense')
   const [activePeriod, setActivePeriod] = useState<'week' | 'month' | 'year'>('month')
   const [currentDate, setCurrentDate] = useState(new Date())
+  const canGoNext = useMemo(() => {
+    const nextDate = shiftPeriodDate(currentDate, activePeriod, 1)
+
+    return getPeriodStart(nextDate, activePeriod) <= getPeriodStart(new Date(), activePeriod)
+  }, [activePeriod, currentDate])
 
   const categoryData = useMemo(() => {
     // Fix: Create new Date objects properly, using currentDate as base
@@ -238,27 +243,27 @@ export function StatisticsComponent({ transactions }: { transactions: Transactio
         <Pressable
           style={transactionStyles.periodNavButton}
           onPress={() => {
-            const newDate = new Date(currentDate)
-            if (activePeriod === 'week') newDate.setDate(newDate.getDate() - 7)
-            else if (activePeriod === 'month') newDate.setMonth(newDate.getMonth() - 1)
-            else newDate.setFullYear(newDate.getFullYear() - 1)
-            setCurrentDate(newDate)
+            setCurrentDate((date) => shiftPeriodDate(date, activePeriod, -1))
           }}
         >
           <MaterialCommunityIcons name='chevron-left' size={24} color='#245442' />
         </Pressable>
         <Text style={transactionStyles.periodLabel}>{formatPeriodLabel()}</Text>
         <Pressable
-          style={transactionStyles.periodNavButton}
+          style={[
+            transactionStyles.periodNavButton,
+            !canGoNext && transactionStyles.disabledNavButton,
+          ]}
+          disabled={!canGoNext}
           onPress={() => {
-            const newDate = new Date(currentDate)
-            if (activePeriod === 'week') newDate.setDate(newDate.getDate() + 7)
-            else if (activePeriod === 'month') newDate.setMonth(newDate.getMonth() + 1)
-            else newDate.setFullYear(newDate.getFullYear() + 1)
-            setCurrentDate(newDate)
+            setCurrentDate((date) => shiftPeriodDate(date, activePeriod, 1))
           }}
         >
-          <MaterialCommunityIcons name='chevron-right' size={24} color='#245442' />
+          <MaterialCommunityIcons
+            name='chevron-right'
+            size={24}
+            color={canGoNext ? '#245442' : '#A9B7B2'}
+          />
         </Pressable>
       </View>
 
@@ -352,8 +357,34 @@ export function StatisticsComponent({ transactions }: { transactions: Transactio
   )
 }
 
+function shiftPeriodDate(date: Date, period: 'week' | 'month' | 'year', direction: -1 | 1) {
+  const newDate = new Date(date)
+
+  if (period === 'week') newDate.setDate(newDate.getDate() + direction * 7)
+  else if (period === 'month') newDate.setMonth(newDate.getMonth() + direction)
+  else newDate.setFullYear(newDate.getFullYear() + direction)
+
+  return newDate
+}
+
+function getPeriodStart(date: Date, period: 'week' | 'month' | 'year') {
+  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+  if (period === 'week') {
+    const day = start.getDay()
+    start.setDate(start.getDate() - day + (day === 0 ? -6 : 1))
+  } else if (period === 'month') {
+    start.setDate(1)
+  } else {
+    start.setMonth(0, 1)
+  }
+
+  start.setHours(0, 0, 0, 0)
+  return start
+}
+
 function CustomPieChart({ data, colors }: CustomPieChartProps) {
-  const screenWidth = Dimensions.get('window').width
+  const chartWidth = Math.min(Dimensions.get('window').width - 64, 260)
 
   const chartData: ChartItem[] = data.map((item, index) => ({
     name: item.name,
@@ -368,7 +399,7 @@ function CustomPieChart({ data, colors }: CustomPieChartProps) {
       <PieChart
         data={chartData}
         hasLegend={false}
-        width={screenWidth - 32}
+        width={chartWidth}
         height={220}
         chartConfig={{
           color: (opacity: number = 1) => `rgba(0, 0, 0, ${opacity})`,

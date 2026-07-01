@@ -5,6 +5,7 @@ import type {
   UpdateBudgetDto,
 } from '@/features/budget/domain/budget.types'
 import { fetchWithAuthRetry } from '@/features/auth/data/authenticated-fetch'
+import { apiBaseUrl } from '@/infrastructure/api/api-base-url'
 import { logBackendRequest, logBackendResponse } from '@/shared/utils/http-debug'
 
 const isAbortError = (error: unknown) =>
@@ -12,8 +13,6 @@ const isAbortError = (error: unknown) =>
   error !== null &&
   'name' in error &&
   (error as { name?: unknown }).name === 'AbortError'
-
-export const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.example.com'
 
 const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, '')
 
