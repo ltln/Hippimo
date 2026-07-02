@@ -384,7 +384,8 @@ function getPeriodStart(date: Date, period: 'week' | 'month' | 'year') {
 }
 
 function CustomPieChart({ data, colors }: CustomPieChartProps) {
-  const chartWidth = Math.min(Dimensions.get('window').width - 64, 260)
+  const chartSize = Math.max(160, Math.min(Dimensions.get('window').width - 100, 220))
+  const pieCenterOffset = chartSize / 4
 
   const chartData: ChartItem[] = data.map((item, index) => ({
     name: item.name,
@@ -399,14 +400,14 @@ function CustomPieChart({ data, colors }: CustomPieChartProps) {
       <PieChart
         data={chartData}
         hasLegend={false}
-        width={chartWidth}
-        height={220}
+        width={chartSize}
+        height={chartSize}
         chartConfig={{
           color: (opacity: number = 1) => `rgba(0, 0, 0, ${opacity})`,
         }}
         accessor={'population'}
         backgroundColor={'transparent'}
-        paddingLeft={'0'}
+        paddingLeft={String(pieCenterOffset)}
         absolute
       />
       <View style={transactionStyles.legendContainer}>

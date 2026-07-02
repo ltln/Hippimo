@@ -759,13 +759,19 @@ export const styles = StyleSheet.create({
   },
   legendContainer: {
     marginTop: 10,
-    width: '100%',
-    paddingHorizontal: 20,
+    alignSelf: 'center',
+    maxWidth: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    columnGap: 14,
+    rowGap: 8,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 4,
+    maxWidth: '100%',
   },
   dot: {
     width: 12,
@@ -774,6 +780,7 @@ export const styles = StyleSheet.create({
     marginRight: 8,
   },
   legendText: {
+    flexShrink: 1,
     fontSize: 14,
     color: '#333',
   },
