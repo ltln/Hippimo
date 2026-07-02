@@ -147,11 +147,7 @@ export default function DashboardScreen() {
           ))}
         </View>
 
-        <SectionHeader
-          title='AI & NGÂN SÁCH'
-          action='MỞ CHAT AI >'
-          onActionPress={() => router.push('/(tabs)/chat_ai')}
-        />
+        <SectionHeader title='NGÂN SÁCH' />
         <View style={styles.aiCard}>
           {budgets.length === 0 ? <EmptyMessage text='Bạn chưa tạo khoản ngân sách nào' /> : null}
 
