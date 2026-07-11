@@ -28,6 +28,7 @@
 ## GIỚI THIỆU ĐỒ ÁN MÔN HỌC
 
 - **Đề tài đồ án nhóm:** Hippimo - Ứng dụng quản lý chi tiêu cá nhân kết hợp AI
+- **Source code**: [Mobile App](https://github.com/ltln/Hippimo) - [Backend App](https://github.com/ltln/Hippimo-server)
 
 ---
 
